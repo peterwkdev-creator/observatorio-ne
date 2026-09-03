@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { br, expandir } from "../../../lib/dados";
-import { indexarFiscal, ROTULO_FAIXA, slugDe } from "../../../lib/fiscal";
+import {
+  indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
+} from "../../../lib/fiscal";
 import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
 import estilos from "./municipio.module.css";
 
@@ -95,6 +97,8 @@ export default async function PaginaMunicipio(
 
   const f = m.fiscal;
   const quadrimestre = `${fiscal.periodo}º quadrimestre de ${fiscal.exercicio}`;
+  const serie = fiscal.serie[String(m.codigo)] ?? [];
+  const delta = variacao(serie);
 
   // JSON-LD: é o que faz o Google entender que a página descreve um lugar e um
   // conjunto de dados, em vez de tratá-la como texto solto.
@@ -129,7 +133,7 @@ export default async function PaginaMunicipio(
       />
 
       <nav className={estilos.trilha} aria-label="Você está em">
-        <Link href="/">Observatório NE</Link>
+        <Link href="/">Números Públicos</Link>
         <span aria-hidden="true"> › </span>
         <span>{uf?.nome ?? m.uf}</span>
         <span aria-hidden="true"> › </span>
@@ -250,6 +254,55 @@ export default async function PaginaMunicipio(
           mostra o número publicado ao lado do limite legal.
         </p>
       </section>
+
+      {serie.length > 1 && (
+        <section className={estilos.texto}>
+          <h2>Como isso mudou ao longo do tempo</h2>
+          <p>
+            {delta === null ? null : delta > 0 ? (
+              <>
+                O comprometimento com pessoal <strong>subiu {br(delta, 2)} ponto
+                {Math.abs(delta) >= 2 ? "s" : ""} percentua
+                {Math.abs(delta) >= 2 ? "is" : "l"}</strong> entre o primeiro e o
+                último quadrimestre publicado.
+              </>
+            ) : delta < 0 ? (
+              <>
+                O comprometimento com pessoal <strong>caiu {br(Math.abs(delta), 2)}{" "}
+                ponto{Math.abs(delta) >= 2 ? "s" : ""} percentua
+                {Math.abs(delta) >= 2 ? "is" : "l"}</strong> entre o primeiro e o
+                último quadrimestre publicado.
+              </>
+            ) : (
+              <>O comprometimento com pessoal ficou <strong>estável</strong>.</>
+            )}{" "}
+            Cada linha abaixo é um relatório entregue por {m.nome} ao SICONFI.
+          </p>
+          <div className={estilos.rolagem}>
+            <table className={estilos.serie}>
+              <thead>
+                <tr>
+                  <th scope="col">Quadrimestre</th>
+                  <th scope="col" className={estilos.num}>Pessoal / RCL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {serie.map(([ex, pe, , pct]) => (
+                  <tr key={`${ex}-${pe}`}>
+                    <th scope="row">{rotuloPeriodo(ex, pe)}</th>
+                    <td className={`${estilos.num} tabular`}>{br(pct, 2)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className={estilos.ressalva}>
+            Quadrimestre sem linha é quadrimestre em que o município{" "}
+            <strong>não entregou</strong> o relatório — não zero, e não
+            estabilidade.
+          </p>
+        </section>
+      )}
 
       {vizinhos.length > 0 && (
         <section className={estilos.texto}>

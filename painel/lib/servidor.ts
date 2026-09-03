@@ -41,12 +41,15 @@ export async function lerFiscal(): Promise<SnapshotFiscal> {
 /**
  * O endereço canônico do site, em variável de ambiente.
  *
- * Cravar `observatorio-ne.vercel.app` no código significaria reescrever 1.794
- * tags `canonical` no dia em que um domínio próprio entrasse -- e é justamente
- * por causa desse dia que a variável existe. O `.vercel.app` e um dominio
- * compartilhado, sem autoridade propria e que a Vercel pode reatribuir a outro
- * usuario; sair dele e questao de quando, nao de se.
+ * O dominio proprio entrou em 03/09/2026: `numerospublicos.com.br`, registrado
+ * no registro.br. O canonical e o `www`, e nao a raiz, porque `www` e um CNAME
+ * que acompanha a Vercel sozinho -- a raiz seria um registro A com IP fixo, e a
+ * propria Vercel avisa que esta expandindo a faixa de IPs. Site que quebra
+ * quando um IP muda exige manutencao manual, que e o oposto do objetivo.
+ *
+ * A variavel continua existindo porque cravar endereco no codigo significaria
+ * reescrever 1.794 tags `canonical` na proxima mudanca.
  */
 export const SITE =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-  "https://observatorio-ne.vercel.app";
+  "https://www.numerospublicos.com.br";

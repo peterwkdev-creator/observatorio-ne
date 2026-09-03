@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Observatório NE — dados abertos dos 1.794 municípios do Nordeste",
+  title: "Números Públicos — dados abertos dos municípios brasileiros",
   description:
     "População, PIB e população estimada dos 1.794 municípios dos nove " +
     "estados do Nordeste, direto das APIs públicas do IBGE, com a fonte e a " +
     "data de coleta ao lado de cada número.",
-  metadataBase: new URL("https://observatorio-ne.vercel.app"),
+  metadataBase: new URL("https://www.numerospublicos.com.br"),
   openGraph: {
-    title: "Observatório NE",
+    title: "Números Públicos",
     description:
       "Dados abertos dos 1.794 municípios do Nordeste, com procedência.",
     locale: "pt_BR",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   // .claude/social-preview/gerar.mjs`, nunca editar o PNG à mão.
   twitter: {
     card: "summary_large_image",
-    title: "Observatório NE",
+    title: "Números Públicos",
     description:
       "Dados abertos dos 1.794 municípios do Nordeste, com procedência.",
   },

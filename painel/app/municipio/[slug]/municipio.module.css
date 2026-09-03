@@ -216,3 +216,40 @@
     font-size: var(--texto-2xl);
   }
 }
+
+/* A tabela rola dentro do proprio container: a PAGINA nunca rola na
+   horizontal, que e o que quebra a leitura no celular. */
+.rolagem {
+  overflow-x: auto;
+}
+
+.serie {
+  border-collapse: collapse;
+  font-size: var(--texto-sm);
+  min-width: 18rem;
+  margin-bottom: var(--e-4);
+}
+
+.serie th,
+.serie td {
+  padding: var(--e-2) var(--e-4);
+  border-bottom: 1px solid var(--borda);
+  text-align: left;
+}
+
+.serie thead th {
+  font-size: var(--texto-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-fraca);
+  border-bottom: 1px solid var(--borda-forte);
+}
+
+.serie tbody th {
+  font-weight: 600;
+  color: var(--tinta-suave);
+}
+
+.num {
+  text-align: right;
+}

@@ -62,7 +62,44 @@ export type SnapshotFiscal = {
   };
   colunas: string[];
   municipios: LinhaFiscal[];
+  colunasSerie: string[];
+  /**
+   * Série histórica por código IBGE. Um número sozinho não diz se o município
+   * está melhorando ou piorando — e é essa a pergunta que a foto esconde.
+   * Entre 2024/2 e 2024/3, Salvador caiu de 33,22% para 32,37% e Imperatriz
+   * subiu de 57,63% para 60,64%: mesmo cartão, movimentos opostos.
+   */
+  serie: Record<string, PontoSerie[]>;
+  periodos: [exercicio: number, periodo: number][];
 };
+
+/** Um ponto da série: exercício, quadrimestre, publicou, percentual. */
+export type PontoSerie = [
+  exercicio: number,
+  periodo: number,
+  publicou: boolean,
+  percentual: number,
+];
+
+/** O rótulo curto de um período: `2024/3`. */
+export function rotuloPeriodo(exercicio: number, periodo: number): string {
+  return `${exercicio}/${periodo}`;
+}
+
+/**
+ * A variação entre o primeiro e o último ponto da série, em pontos percentuais.
+ * `null` quando há menos de dois pontos — uma série de um ponto não tem
+ * tendência, e fingir que tem seria inventar informação.
+ */
+export function variacao(pontos: PontoSerie[] | undefined): number | null {
+  if (!pontos || pontos.length < 2) return null;
+  // `at()` em vez de indexar: o tsconfig usa `noUncheckedIndexedAccess`, e ele
+  // está certo em exigir a checagem -- série vazia existe.
+  const primeiro = pontos.at(0);
+  const ultimo = pontos.at(-1);
+  if (!primeiro || !ultimo) return null;
+  return ultimo[3] - primeiro[3];
+}
 
 export type Fiscal = {
   publicou: boolean | null;

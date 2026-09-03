@@ -18,7 +18,7 @@ export default async function Pagina() {
     <main className={s.pagina} id="conteudo">
       <header className={s.cabecalho}>
         <span className={s.selo}>Dados abertos · IBGE</span>
-        <h1 className={s.titulo}>Observatório NE</h1>
+        <h1 className={s.titulo}>Números Públicos</h1>
         <p className={s.subtitulo}>
           População, PIB e estimativa populacional dos{" "}
           <strong>{br(municipios.length)} municípios</strong> dos nove estados
