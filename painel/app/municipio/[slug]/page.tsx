@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 
 import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import {
-  indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
+  FUNCOES_DA_PORTARIA, funcoesDe, indexarFiscal, ROTULO_FAIXA, rotuloPeriodo,
+  slugDe, variacao,
 } from "../../../lib/fiscal";
 import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
+import FuncoesBarras from "./funcoes-barras";
 import SerieSvg from "./serie-svg";
 import estilos from "./municipio.module.css";
 
@@ -46,11 +48,17 @@ export async function generateMetadata(
 
   const pop = m.valores["populacao-censo-2022"] ?? null;
   const pessoal = m.fiscal?.percentual ?? null;
+  const maiorFuncao = funcoesDe(fiscal, m.codigo)?.fatias[0] ?? null;
   // A descrição carrega os NÚMEROS, não adjetivos. É o que aparece no
   // resultado da busca, e número é o que faz alguém clicar num painel de dado.
   const partes = [
     pop !== null ? `${br(pop, 0)} habitantes` : null,
     pessoal !== null ? `${br(pessoal, 2)}% da receita em pessoal` : null,
+    // A maior função é o número mais concreto da página inteira, e o único
+    // que responde à pergunta que a pessoa realmente digitou na busca.
+    maiorFuncao && maiorFuncao.percentual !== null
+      ? `${br(maiorFuncao.percentual, 1)}% do gasto em ${maiorFuncao.nome.toLowerCase()}`
+      : null,
   ].filter(Boolean);
 
   return {
@@ -102,6 +110,15 @@ export default async function PaginaMunicipio(
   const serie = fiscal.serie[String(m.codigo)] ?? [];
   const delta = variacao(serie);
 
+  // A outra pergunta: para onde vai o dinheiro. `null` quando o município não
+  // entregou o RREO -- que é um relatório diferente do RGF, entregue em outra
+  // data, então quem tem um pode perfeitamente não ter o outro.
+  const funcoes = funcoesDe(fiscal, m.codigo);
+  const bimestre = fiscal.funcoes
+    ? `${fiscal.funcoes.periodo}º bimestre de ${fiscal.funcoes.exercicio}`
+    : "";
+  const maior = funcoes?.fatias[0] ?? null;
+
   // JSON-LD: é o que faz o Google entender que a página descreve um lugar e um
   // conjunto de dados, em vez de tratá-la como texto solto.
   const jsonLd = {
@@ -109,8 +126,9 @@ export default async function PaginaMunicipio(
     "@type": "Dataset",
     name: `Dados abertos de ${m.nome} (${m.uf})`,
     description:
-      `População, PIB e despesa com pessoal do município de ${m.nome}, ` +
-      `${m.uf}, a partir das APIs públicas do IBGE e do SICONFI.`,
+      `População, PIB, despesa com pessoal e despesa liquidada por função ` +
+      `orçamentária do município de ${m.nome}, ${m.uf}, a partir das APIs ` +
+      `públicas do IBGE e do SICONFI/Tesouro Nacional.`,
     url: `${SITE}/municipio/${m.slug}/`,
     license: "https://www.gnu.org/licenses/agpl-3.0.html",
     isAccessibleForFree: true,
@@ -374,6 +392,41 @@ export default async function PaginaMunicipio(
             Quadrimestre sem linha é quadrimestre em que o município{" "}
             <strong>não entregou</strong> o relatório — não zero, e não
             estabilidade.
+          </p>
+        </section>
+      )}
+
+      {funcoes && funcoes.fatias.length > 0 && (
+        <section className={estilos.texto}>
+          <h2>Para onde vai o dinheiro</h2>
+          <p>
+            No {bimestre}, {m.nome} liquidou{" "}
+            <strong>{escala(funcoes.total).curto}</strong> de despesa
+            {maior && maior.percentual !== null && (
+              <>
+                , e a maior fatia foi <strong>{maior.nome.toLowerCase()}</strong>,
+                com <strong>{br(maior.percentual, 1)}%</strong> do total
+              </>
+            )}
+            . Este é um relatório <em>diferente</em> do que traz o gasto com
+            pessoal: o percentual acima responde se a folha cabe no limite, e a
+            tabela abaixo responde no que o dinheiro foi gasto. Um não prevê o
+            outro.
+          </p>
+          <div className={estilos.rolagem}>
+            <FuncoesBarras
+              fatias={funcoes.fatias}
+              total={funcoes.total}
+              municipio={m.nome}
+            />
+          </div>
+          <p className={estilos.ressalva}>
+            Despesa <strong>liquidada</strong> até o bimestre — o que de fato
+            foi gasto, não o que foi orçado nem o que foi empenhado. {m.nome}{" "}
+            declarou gasto em <strong>{funcoes.fatias.length}</strong> das{" "}
+            {FUNCOES_DA_PORTARIA} funções previstas na Portaria MOG 42/1999, e a
+            soma delas fecha com o total que o próprio município declarou.
+            Fonte: {fiscal.funcoes?.fonte}.
           </p>
         </section>
       )}

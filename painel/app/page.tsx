@@ -17,10 +17,10 @@ export default async function Pagina() {
   return (
     <main className={s.pagina} id="conteudo">
       <header className={s.cabecalho}>
-        <span className={s.selo}>Dados abertos · IBGE</span>
+        <span className={s.selo}>Dados abertos · IBGE e Tesouro Nacional</span>
         <h1 className={s.titulo}>Números Públicos</h1>
         <p className={s.subtitulo}>
-          População, PIB e estimativa populacional dos{" "}
+          População, PIB, gasto com pessoal e despesa por função dos{" "}
           <strong>{br(municipios.length)} municípios</strong> dos nove estados
           do Nordeste — com a fonte e a data de coleta ao lado de cada número.
         </p>

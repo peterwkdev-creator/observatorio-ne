@@ -1,6 +1,6 @@
 import { expandir } from "../../../lib/dados";
 import { cabecalhosCsv, paraCsv } from "../../../lib/csv";
-import { indexarFiscal } from "../../../lib/fiscal";
+import { funcoesDe, indexarFiscal } from "../../../lib/fiscal";
 import { lerFiscal, lerSnapshot } from "../../../lib/servidor";
 
 /**
@@ -25,10 +25,25 @@ export async function GET() {
     ...indicadores.map((i) => i.codigo),
     "pessoal_pct_rcl", "pessoal_limite_prudencial", "pessoal_publicou",
     "pessoal_exercicio", "pessoal_periodo",
+    // Da despesa por função entram só o total e as duas maiores. As 28 viriam
+    // com ~20 colunas vazias por linha para a maioria dos municípios, e quem
+    // quiser a decomposição inteira tem o CSV do município, que é longo e a
+    // traz completa. Aqui o que se quer é **comparar** 1.794 linhas.
+    "despesa_liquidada_total", "despesa_educacao", "despesa_saude",
+    "despesa_exercicio", "despesa_periodo",
   ];
+
+  // `undefined` quando o município não entregou o RREO. Vira campo vazio no
+  // CSV, e não zero: "não entregou" e "gastou nada" não podem colapsar na
+  // mesma célula.
+  const acha = (
+    fn: ReturnType<typeof funcoesDe>,
+    nome: string,
+  ): number | null => fn?.fatias.find((x) => x.nome === nome)?.valor ?? null;
 
   const linhas = expandir(snapshot).map((m) => {
     const f = porCodigo.get(m.codigo);
+    const fn = funcoesDe(fiscal, m.codigo);
     return [
       m.codigo, m.nome, m.uf,
       ...indicadores.map((i) => m.valores[i.codigo] ?? null),
@@ -40,6 +55,11 @@ export async function GET() {
         ? "nao_consultado"
         : f.publicou ? "sim" : "nao",
       fiscal.exercicio, fiscal.periodo,
+      fn?.total ?? null,
+      acha(fn, "Educação"),
+      acha(fn, "Saúde"),
+      fiscal.funcoes?.exercicio ?? null,
+      fiscal.funcoes?.periodo ?? null,
     ];
   });
 

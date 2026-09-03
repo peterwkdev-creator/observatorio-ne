@@ -1,6 +1,6 @@
 import { expandir } from "../../../../lib/dados";
 import { cabecalhosCsv, paraCsv } from "../../../../lib/csv";
-import { slugDe } from "../../../../lib/fiscal";
+import { funcoesDe, slugDe } from "../../../../lib/fiscal";
 import { lerFiscal, lerSnapshot } from "../../../../lib/servidor";
 
 /**
@@ -48,6 +48,24 @@ export async function GET(
   for (const [ex, pe, , pct] of serie) {
     linhas.push([...comum, "Despesa com pessoal (% da RCL ajustada)",
       `${ex}/${pe}`, pct, "%", "SICONFI", fiscal.coletadoEm ?? ""]);
+  }
+
+  // A despesa por função entra como linhas novas, e não como colunas: é
+  // exatamente o que o formato longo compra. Um CSV largo precisaria de 28
+  // colunas a mais no cabeçalho, e o cabeçalho é o que quebra a planilha de
+  // quem já baixou o arquivo antes.
+  const funcoes = funcoesDe(fiscal, m.codigo);
+  const periodoFuncoes = fiscal.funcoes
+    ? `${fiscal.funcoes.exercicio}/${fiscal.funcoes.periodo}`
+    : "";
+  for (const f of funcoes?.fatias ?? []) {
+    linhas.push([...comum, `Despesa liquidada — ${f.nome}`, periodoFuncoes,
+      f.valor, "R$", "SICONFI", fiscal.funcoes?.coletadoEm ?? ""]);
+  }
+  if (funcoes?.total !== null && funcoes?.total !== undefined) {
+    linhas.push([...comum, "Despesa liquidada — total declarado",
+      periodoFuncoes, funcoes.total, "R$", "SICONFI",
+      fiscal.funcoes?.coletadoEm ?? ""]);
   }
 
   const csv = paraCsv(

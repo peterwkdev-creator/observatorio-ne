@@ -295,3 +295,88 @@
   padding: var(--e-3) 0;
   border-bottom: 1px solid var(--borda);
 }
+
+/* ---- Despesa por função ---------------------------------------------- */
+
+.funcoes {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 30rem;
+  font-size: var(--texto-sm);
+  margin-bottom: var(--e-4);
+}
+
+.funcoes th,
+.funcoes td {
+  padding: var(--e-2) var(--e-3);
+  border-bottom: 1px solid var(--borda);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.funcoes thead th {
+  font-size: var(--texto-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-fraca);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.funcoes tbody th {
+  font-weight: 500;
+  color: var(--tinta);
+}
+
+/* Nome numa linha só — mas **só onde cabe**. "Assistência Social" quebrando em
+   duas deixa a linha com o dobro da altura das vizinhas, e altura irregular
+   atrapalha exatamente a comparação que esta tabela existe para permitir. Em
+   375px, porém, o `nowrap` empurrava a coluna "Em reais" para fora da tela e
+   obrigava a rolar na horizontal para ler o valor — o que é pior que a linha
+   alta. Acima do ponto de quebra, a tabela cabe folgada e o nowrap vale. */
+@media (min-width: 34rem) {
+  .funcoes tbody th {
+    white-space: nowrap;
+  }
+}
+
+.funcoes .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* O trilho ocupa o que sobrar: é a única coluna que pode encolher, porque a
+   barra é redundante com o número ao lado. Em tela estreita ela some por
+   inteiro (ver a media query) e nada de informação se perde. */
+.trilho {
+  width: 100%;
+  padding-right: 0 !important;
+}
+
+.barra {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--acento);
+  /* A barra não é decoração: em modo de alto contraste forçado, `background`
+     é descartado e ela desapareceria. `forced-color-adjust` a mantém. */
+  forced-color-adjust: none;
+  min-width: 2px;
+}
+
+@media (max-width: 34rem) {
+  .funcoes {
+    min-width: 0;
+  }
+  .funcoes .trilho {
+    display: none;
+  }
+  /* Cabeçalho também quebra: "% DO GASTO" numa linha só custa 85px que a
+     coluna dos valores precisa mais. */
+  .funcoes thead th {
+    white-space: normal;
+  }
+  .funcoes th,
+  .funcoes td {
+    padding: var(--e-2);
+  }
+}

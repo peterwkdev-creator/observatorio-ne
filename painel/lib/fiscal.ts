@@ -79,7 +79,97 @@ export type SnapshotFiscal = {
    */
   serie: Record<string, PontoSerie[]>;
   periodos: [exercicio: number, periodo: number][];
+  /** A despesa por função. `null` enquanto a varredura não tiver rodado. */
+  funcoes: Funcoes | null;
 };
+
+/**
+ * O que o município gasta por função orçamentária — as 28 da Portaria MOG
+ * 42/1999: educação, saúde, urbanismo, assistência social, e assim por diante.
+ *
+ * O percentual com pessoal responde "cabe no limite?". Esta é a **outra**
+ * pergunta, a que nenhum percentual responde: *para onde vai o dinheiro?* São
+ * eixos independentes — Salvador compromete 32% da receita com pessoal e
+ * destina 24% do orçamento à saúde, e nem um número prevê o outro.
+ *
+ * ## O formato é esparso, e por quê
+ *
+ * Cada município declara ~14 das 28 funções. Emitir as 28 com `null` nas outras
+ * dobraria o arquivo para não dizer nada. Os rótulos saem uma vez só, ordenados
+ * pela soma no Nordeste, e cada valor carrega o **índice** nesse array.
+ *
+ * ## A armadilha que já custou um número vinte vezes menor
+ *
+ * No relatório de origem cada função aparece **duas vezes**: no total e em
+ * "Intra-Orçamentárias" (transferências entre órgãos do próprio município).
+ * O motor Python filtra na leitura — Salvador em saúde é R$ 2,86 bi, não os
+ * R$ 137 mi da leitura ingênua. Aqui já chega filtrado; não somar de novo.
+ */
+export type Funcoes = {
+  exercicio: number;
+  /** **Bimestre** (1..6). O RREO não usa a escala quadrimestral do RGF. */
+  periodo: number;
+  fonte: string;
+  coletadoEm: string | null;
+  cobertura: { consultados: number; publicaram: number; naoFecham: number };
+  rotulos: string[];
+  colunasMunicipio: string[];
+  /** `{ "2927408": [totalDeclarado, [[indice, valor], ...]] }`, em reais inteiros. */
+  porMunicipio: Record<string, EntradaFuncoes>;
+};
+
+export type EntradaFuncoes = [
+  total: number | null,
+  valores: [indice: number, valor: number][],
+];
+
+/**
+ * Quantas funções a Portaria MOG 42/1999 prevê.
+ *
+ * Constante da norma, **não** `rotulos.length`: aquele é quantas aparecem no
+ * dado coletado, e os dois números só coincidem por acaso. Usar um no lugar do
+ * outro produz uma frase que fica errada no dia em que uma função não for
+ * declarada por ninguém — e ninguém vai perceber.
+ */
+export const FUNCOES_DA_PORTARIA = 28;
+
+/** Uma função já com nome, valor e fatia do orçamento. */
+export type FatiaFuncao = {
+  nome: string;
+  valor: number;
+  /** `null` quando o total declarado é zero ou ausente — dividir por ele
+   *  produziria `Infinity` ou `NaN`, e os dois viram "—" na tela sem que
+   *  ninguém entenda por quê. */
+  percentual: number | null;
+};
+
+/**
+ * As funções de um município, da maior para a menor, com a fatia de cada uma.
+ *
+ * `null` quando o município não entregou o RREO — e "não entregou" nunca pode
+ * virar uma lista vazia que o leitor confunda com "não gastou nada".
+ */
+export function funcoesDe(
+  s: SnapshotFiscal,
+  codigo: number,
+): { total: number | null; fatias: FatiaFuncao[] } | null {
+  const bloco = s.funcoes;
+  if (!bloco) return null;
+  const entrada = bloco.porMunicipio[String(codigo)];
+  if (!entrada) return null;
+  const [total, valores] = entrada;
+  const fatias = valores
+    .map(([i, valor]) => ({
+      // O índice vem de um arquivo gerado, mas o `?? ...` não é paranoia
+      // decorativa: se o export mudar a ordem dos rótulos sem regerar o resto,
+      // o rótulo faltante seria `undefined` impresso como texto na página.
+      nome: bloco.rotulos[i] ?? `Função ${i}`,
+      valor,
+      percentual: total && total > 0 ? (valor * 100) / total : null,
+    }))
+    .sort((a, b) => b.valor - a.valor);
+  return { total, fatias };
+}
 
 /** Um ponto da série: exercício, quadrimestre, publicou, percentual. */
 export type PontoSerie = [
