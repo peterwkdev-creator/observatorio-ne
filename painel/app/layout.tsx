@@ -15,6 +15,17 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     type: "website",
   },
+  // `app/opengraph-image.png` vira o og:image sozinho, pela convenção de
+  // arquivo do App Router. O `card` precisa ser explícito: o padrão do Next é
+  // `summary`, que renderiza um quadrado pequeno e joga fora a imagem larga.
+  // A imagem sai de `.claude/social-preview/` — regerar com `node
+  // .claude/social-preview/gerar.mjs`, nunca editar o PNG à mão.
+  twitter: {
+    card: "summary_large_image",
+    title: "Observatório NE",
+    description:
+      "Dados abertos dos 1.794 municípios do Nordeste, com procedência.",
+  },
   robots: { index: true, follow: true },
 };
 
