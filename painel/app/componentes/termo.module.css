@@ -1,0 +1,157 @@
+/* Termo com dica. Zero JavaScript: `:hover` e `:focus-visible` fazem tudo. */
+
+.termo {
+  position: relative;
+  color: inherit;
+  /* Sublinhado pontilhado e discreto: o termo tem de PARECER clicavel sem
+     competir com os links de verdade do texto, que sao azuis e continuos. */
+  text-decoration: underline dotted;
+  text-decoration-color: var(--borda-forte);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.termo:hover,
+.termo:focus-visible {
+  text-decoration-color: var(--acento);
+}
+
+.dica {
+  /* Escondido de propósito com `visibility`, e nao `display:none`: assim o
+     `aria-describedby` continua valendo para o leitor de tela, que le a
+     explicacao junto do termo sem depender de hover nenhum. */
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  /* `min()` com `vw` porque a dica pode nascer perto da borda direita: sem
+     isto ela empurra a pagina e cria rolagem horizontal em 375px. */
+  width: max-content;
+  max-width: min(24rem, 78vw);
+  padding: var(--e-3) var(--e-4);
+  background: var(--superficie);
+  color: var(--tinta-suave);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  box-shadow: 0 4px 14px rgb(18 33 46 / 0.13);
+  font-size: var(--texto-sm);
+  font-weight: 400;
+  line-height: 1.5;
+  text-decoration: none;
+  text-align: left;
+  white-space: normal;
+  transition: opacity 120ms ease;
+}
+
+.termo:hover .dica,
+.termo:focus-visible .dica {
+  visibility: visible;
+  opacity: 1;
+}
+
+.mais {
+  display: block;
+  margin-top: var(--e-2);
+  font-size: var(--texto-xs);
+  color: var(--acento);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dica {
+    transition: none;
+  }
+}
+
+/* Em tela de toque nao existe hover, e um `:hover` que "gruda" depois do toque
+   deixaria a dica presa na tela ate o proximo toque em outro lugar. Ali o
+   toque simplesmente navega para a ajuda, que e a resposta completa. */
+@media (hover: none) {
+  .termo:hover .dica {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+/* Em tela estreita a dica deixa de flutuar e vira bloco no fluxo.
+
+   MOTIVO MEDIDO em 03/09/2026: com `position: absolute`, a dica cabia na tela
+   (`right <= innerWidth`) e mesmo assim o `documentElement.scrollWidth`
+   passava da janela em 375px -- elemento absoluto conta para o transbordo do
+   ancestral mesmo estando visualmente dentro. O resultado era rolagem
+   horizontal na pagina inteira, que e exatamente o que todo o resto do site
+   evita.
+
+   Nao da para resolver isso com `max-width`: se o termo comeca em x=200, a
+   dica transborda por mais que se limite a largura. E virar o lado ("flip")
+   exige medir a posicao, o que aqui significaria JavaScript.
+
+   No fluxo, ela empurra o texto para baixo enquanto aparece. Em tela de toque
+   isso nunca acontece (a regra `hover: none` acima), entao o unico caminho que
+   a revela no estreito e o TECLADO -- e ali o deslocamento e aceitavel, porque
+   quem focou pediu para ver. */
+@media (max-width: 34rem) {
+  .dica {
+    position: static;
+    /* `display` e nao `visibility`: no fluxo, `visibility: hidden` continuaria
+       reservando o espaco e abriria um buraco permanente no paragrafo.
+       A descricao segue acessivel: o algoritmo de nome e descricao acessivel
+       inclui elementos escondidos quando referenciados por `aria-describedby`. */
+    display: none;
+    visibility: visible;
+    opacity: 1;
+    width: auto;
+    max-width: 100%;
+    margin-top: var(--e-2);
+    box-shadow: none;
+  }
+
+  .termo:focus-visible .dica {
+    /* Ver a nota do `.emBloco`: `block` herdaria o sublinhado pontilhado. */
+    display: inline-block;
+    width: 100%;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .dica {
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.5);
+  }
+}
+
+/* Variante de bloco: a dica entra no fluxo em vez de flutuar.
+
+   Existe para os cartoes. Medido: num cartao da grade da pagina de estado, a
+   dica flutuante de 24rem abria em `right = 1167` numa janela de 920 -- o
+   cartao e estreito, e a dica sai por cima dele e da tela. Virar o lado
+   exigiria medir a posicao, e isso e JavaScript.
+
+   E a mesma solucao que a tela estreita usa, pelo mesmo motivo: quando nao da
+   para garantir que a caixa flutuante cabe, ela deixa de flutuar. */
+.emBloco .dica {
+  position: static;
+  display: none;
+  visibility: visible;
+  opacity: 1;
+  width: auto;
+  max-width: 100%;
+  margin-top: var(--e-2);
+  box-shadow: none;
+}
+
+.emBloco:hover .dica,
+.emBloco:focus-visible .dica {
+  /* `inline-block`, e NAO `block`. Medido em 03/09/2026: `text-decoration` do
+     ancestral e desenhada ATRAVES dos descendentes em fluxo, e `none` no filho
+     nao remove -- o texto da dica saiu inteiro com o sublinhado pontilhado do
+     termo. Caixa inline-level atomica nao recebe a propagacao. */
+  display: inline-block;
+  width: 100%;
+}
+
+@media (hover: none) {
+  .emBloco:hover .dica {
+    display: none;
+  }
+}

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Números Públicos">
+  <title>Números Públicos</title>
+  <!--
+    A marca do site, e ela conta a tese em vez de decorar.
+
+    O que este painel faz, em toda página, é UMA coisa: pôr um número ao lado
+    da régua que o julga — o gasto contra o limite legal, o IDEB contra a meta.
+    Então a marca é isso: três barras e uma régua tracejada cruzando, com duas
+    barras abaixo dela e uma acima.
+
+    Por que não um gráfico genérico: três barras crescentes dizem "dados", que
+    é o que qualquer painel diz. A régua é o que distingue este.
+
+    ## As restrições que decidiram o desenho
+
+    **Tem de ser legível a 16px**, que é o tamanho real de um favicon na aba.
+    Por isso nada de linha fina, nada de texto, nada de gradiente: retângulos
+    de 4 unidades num quadro de 32, o que dá 2px de barra a 16px.
+
+    **Tem de funcionar em fundo claro E escuro.** Por isso o quadrado sólido:
+    a marca carrega o próprio fundo e não depende do tema do navegador, da aba
+    fixada ou do atalho na tela inicial.
+
+    **Sem `currentColor` e sem media query de tema.** Ícone de aba é renderizado
+    fora do documento em vários contextos, e cor herdada vira preto ou some.
+  -->
+  <rect width="32" height="32" rx="7" fill="#0f5c8c"/>
+
+  <!-- As barras. Crescentes, e a terceira ultrapassa a régua de propósito. -->
+  <rect x="6.5"  y="19" width="4.5" height="6"  rx="1.2" fill="#ffffff"/>
+  <rect x="13.75" y="15" width="4.5" height="10" rx="1.2" fill="#ffffff"/>
+  <rect x="21"   y="8"  width="4.5" height="17" rx="1.2" fill="#ffffff"/>
+
+  <!-- A régua. Tracejada, como as do site, e por cima das barras para que o
+       cruzamento apareça mesmo quando o ícone é reduzido. -->
+  <line x1="4" x2="28" y1="12.5" y2="12.5"
+        stroke="#7fc4ec" stroke-width="1.8" stroke-linecap="round"
+        stroke-dasharray="3.2 2.6"/>
+</svg>

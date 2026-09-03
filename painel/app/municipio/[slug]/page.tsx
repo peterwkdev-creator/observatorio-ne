@@ -12,6 +12,7 @@ import { contarMetas, trajetoriaDe } from "../../../lib/ideb";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import FuncoesBarras from "../../componentes/funcoes-barras";
 import IdebSvg from "../../componentes/ideb-svg";
+import Termo from "../../componentes/termo";
 import SerieSvg from "./serie-svg";
 import estilos from "./municipio.module.css";
 
@@ -262,10 +263,36 @@ export default async function PaginaMunicipio(
               : `${br(f.percentual, 2)}%`}
           </p>
           <p className={estilos.selo}>
-            {ROTULO_FAIXA[f?.faixa ?? "sem-dado"]}
+            {f?.faixa === "implausivel" ? (
+              <Termo
+                ancora="implausivel"
+                bloco
+                dica="O município declarou um percentual que nenhuma prefeitura pode ter — acima de 100% da receita, ou negativo. Não descreve uma crise: descreve um formulário preenchido errado. Fica exibido e marcado, e fora das médias."
+              >
+                {ROTULO_FAIXA.implausivel}
+              </Termo>
+            ) : f?.faixa === "sem-dado" ? (
+              <Termo
+                ancora="travessao"
+                bloco
+                dica="O município não entregou o relatório ao SICONFI. Isso não significa que gaste zero com pessoal: significa que o dado não existe na base do Tesouro."
+              >
+                {ROTULO_FAIXA["sem-dado"]}
+              </Termo>
+            ) : (
+              ROTULO_FAIXA[f?.faixa ?? "sem-dado"]
+            )}
           </p>
           <p className={estilos.fonte}>
-            da receita corrente líquida ajustada · {quadrimestre} · SICONFI
+            da{" "}
+            <Termo
+              ancora="pessoal"
+              bloco
+              dica="A arrecadação do município menos as transferências que ele é obrigado a repassar, com os ajustes que a Lei de Responsabilidade Fiscal manda fazer. É o denominador do percentual — e é a ajustada, não a bruta."
+            >
+              receita corrente líquida ajustada
+            </Termo>{" "}
+            · {quadrimestre} · SICONFI
           </p>
         </article>
       </section>
@@ -303,8 +330,14 @@ export default async function PaginaMunicipio(
             fixa <strong>{br(fiscal.limites.legal, 2)}%</strong> como teto para o
             Executivo municipal, e{" "}
             <strong>{br(f.limitePrudencial ?? fiscal.limites.prudencial, 2)}%</strong>{" "}
-            como limite prudencial — passar dele já proíbe criar cargo, conceder
-            aumento e contratar.
+            como{" "}
+            <Termo
+              ancora="pessoal"
+              dica="O patamar de alerta da Lei de Responsabilidade Fiscal, 95% do teto. Passar dele já proíbe criar cargo, conceder aumento e contratar — antes de o teto ser atingido."
+            >
+              limite prudencial
+            </Termo>{" "}
+            — passar dele já proíbe criar cargo, conceder aumento e contratar.
             {/* Guarda contra o relatorio inconsistente: Sao Bernardo/MA
                 declarou receita AJUSTADA negativa (-R$ 208 mi) com percentual
                 plausivel. Imprimir "sobre R$ -208.239.413,34 de receita"
@@ -449,8 +482,15 @@ export default async function PaginaMunicipio(
             />
           </div>
           <p className={estilos.ressalva}>
-            Despesa <strong>liquidada</strong> até o bimestre — o que de fato
-            foi gasto, não o que foi orçado nem o que foi empenhado. {m.nome}{" "}
+            Despesa{" "}
+            <Termo
+              ancora="funcao"
+              dica="O que de fato foi gasto: o serviço foi prestado ou o material entregue, e a prefeitura reconheceu a dívida. Diferente de dotação (o que foi orçado) e de empenhada (o dinheiro reservado)."
+            >
+              <strong>liquidada</strong>
+            </Termo>{" "}
+            até o bimestre — o que de fato foi gasto, não o que foi orçado nem o
+            que foi empenhado. {m.nome}{" "}
             declarou gasto em <strong>{funcoes.fatias.length}</strong> das{" "}
             {FUNCOES_DA_PORTARIA} funções previstas na Portaria MOG 42/1999, e a
             soma delas fecha com o total que o próprio município declarou.
@@ -524,8 +564,15 @@ export default async function PaginaMunicipio(
               <>
                 {m.nome} destinou{" "}
                 <strong>{br(educacao.percentual, 1)}%</strong> do orçamento à
-                educação no {bimestre}. O IDEB mede o outro lado da mesma
-                conta: aprendizado e fluxo escolar, numa escala de 0 a 10.
+                educação no {bimestre}. O{" "}
+                <Termo
+                  ancora="ideb"
+                  dica="O índice do INEP que combina o quanto os alunos aprenderam (prova do SAEB) com quantos avançaram de ano sem reprovar ou abandonar. Vai de 0 a 10, na mesma escala para todo município do país."
+                >
+                  IDEB
+                </Termo>{" "}
+                mede o outro lado da mesma conta: aprendizado e fluxo escolar,
+                numa escala de 0 a 10.
               </>
             ) : (
               <>

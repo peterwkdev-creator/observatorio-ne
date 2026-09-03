@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import FuncoesBarras from "../../componentes/funcoes-barras";
+import Termo from "../../componentes/termo";
 import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { resumirEstado, slugUf } from "../../../lib/estado";
 import { ROTULO_FAIXA } from "../../../lib/fiscal";
@@ -181,7 +182,16 @@ export default async function PaginaEstado(
         </article>
 
         <article className={estilos.cartao}>
-          <h2 className={estilos.rotulo}>Média de gasto com pessoal</h2>
+          <h2 className={estilos.rotulo}>
+            Média de{" "}
+            <Termo
+              ancora="pessoal"
+              bloco
+              dica="O percentual da receita corrente líquida ajustada que cada município declarou comprometido com pessoal. A média exclui os implausíveis — fora da faixa de 0 a 100%."
+            >
+              gasto com pessoal
+            </Termo>
+          </h2>
           <p className={`${estilos.valor} tabular`}>
             {r.mediaPessoal === null ? "—" : `${br(r.mediaPessoal, 2)}%`}
           </p>
@@ -197,7 +207,14 @@ export default async function PaginaEstado(
               {br(medIdeb.mediana, 1)}
             </p>
             <p className={estilos.fonte}>
-              rede municipal, anos iniciais · {medIdeb.edicao} · INEP
+              <Termo
+                ancora="ideb"
+                bloco
+                dica="O índice do INEP que combina aprendizado e fluxo escolar, de 0 a 10. Aqui é a rede municipal — a que a prefeitura administra —, e não a rede pública, que inclui escolas estaduais."
+              >
+                rede municipal
+              </Termo>
+              , anos iniciais · {medIdeb.edicao} · INEP
               <br />
               mediana de {br(medIdeb.base)} municípios, escala de 0 a 10
             </p>

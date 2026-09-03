@@ -48,7 +48,26 @@ export default function RootLayout({
             nunca na capa. A barra também dá a cada uma das 1.804 páginas um
             link para a raiz, o que reforça o grafo interno consertado hoje. */}
         <div className="barra-site">
-          <a className="barra-marca" href="/">Números Públicos</a>
+          <a className="barra-marca" href="/">
+            {/* A marca conta a tese em vez de decorar: barras contra uma
+                régua tracejada, que é o que toda página deste site faz --
+                pôr um número ao lado do limite que o julga. O SVG é o mesmo
+                arquivo que serve de favicon. */}
+            <svg
+              className="barra-icone" viewBox="0 0 32 32" aria-hidden="true"
+              width="20" height="20"
+            >
+              <rect width="32" height="32" rx="7" fill="#0f5c8c" />
+              <rect x="6.5" y="19" width="4.5" height="6" rx="1.2" fill="#fff" />
+              <rect x="13.75" y="15" width="4.5" height="10" rx="1.2" fill="#fff" />
+              <rect x="21" y="8" width="4.5" height="17" rx="1.2" fill="#fff" />
+              <line
+                x1="4" x2="28" y1="12.5" y2="12.5" stroke="#7fc4ec"
+                strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3.2 2.6"
+              />
+            </svg>
+            Números Públicos
+          </a>
           <nav aria-label="Atalhos do site">
             <a href="/ajuda/">Ajuda</a>
             <a href="/dados/municipios.csv" download>Baixar dados</a>

@@ -197,6 +197,9 @@ p, li {
 }
 
 .barra-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
   font-weight: 600;
   color: var(--tinta);
   text-decoration: none;
@@ -232,4 +235,11 @@ p, li {
   margin: 0;
   max-width: 68ch;
   line-height: 1.6;
+}
+
+.barra-icone {
+  /* `flex-shrink: 0` porque num flex container o SVG encolhe antes do texto,
+     e um logo achatado e pior que nenhum. */
+  flex-shrink: 0;
+  display: block;
 }
