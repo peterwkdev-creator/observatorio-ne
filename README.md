@@ -1,13 +1,27 @@
-# Observatório NE
+# Números Públicos
+
+**Live at [www.numerospublicos.com.br](https://www.numerospublicos.com.br).**
 
 Open data on the **1,794 municipalities of Brazil's Northeast region** —
-ingested from official IBGE public APIs, stored with full provenance, and
-(from step 4) published as a static comparison panel.
+ingested from official IBGE public APIs, stored with full provenance, joined to
+municipal fiscal filings from the National Treasury, and published as **one
+static page per municipality**.
 
-> **Status: all four steps built.** 1,794 municipalities and three indicators
-> ingested from the live API, idempotent, cross-checked against IBGE's own
-> regional aggregate, and rendered as a static panel. Publishing and scheduling
-> are next. Scope and acceptance criteria live in `ESPEC.md`.
+> **Status: published and scheduled.** Every figure is ingested from a live API,
+> idempotent, cross-checked against IBGE's own regional aggregate, and rebuilt
+> weekly by a GitHub Actions job that commits only when the data actually
+> changed.
+
+**1,794 indexable pages, not one.** The whole site used to be a single URL
+holding 1,794 municipalities of data behind a filter — which meant nobody
+searching for a specific town could ever reach it. Each municipality now has
+its own address, title, description and canonical, carrying population, GDP and
+personnel spending against the legal limit, joined by the shared IBGE code.
+
+The fiscal half comes from [painel-fiscal-ne](https://github.com/peterwkdev-creator/painel-fiscal-ne),
+handed over as a versioned snapshot rather than fetched at build time: a build
+that reached into another repository would fail silently the day that repository
+moved.
 
 ## Independent work — no affiliation
 
@@ -126,7 +140,7 @@ layout does not."* This project must run from a clean checkout with no install.
 
 Not MIT. This project can plausibly become a product: Brazilian municipalities
 buy exactly this kind of public data portal, on continuous contracts, and the
-three tender documents behind `ESPEC` price it at BRL 5,000–6,000 per month.
+three tender documents read in full price it at BRL 5,000–6,000 per month.
 
 MIT would let anyone take this code, **close it**, rebrand it and sell it to
 those same municipalities — including the incumbent vendors it would compete
@@ -145,4 +159,12 @@ requires the consent of **every** contributor.
 All public, no registration, no token — `https://servicodados.ibge.gov.br`.
 Every endpoint was called and returned real municipal data before being written
 down; two aggregate/variable combinations returned HTTP 500 and were left out
-rather than promised. See `ESPEC.md` for the verification log.
+rather than promised.
+
+The fiscal figures come from SICONFI (`https://apidatalake.tesouro.gov.br`),
+equally public and equally token-free. **The percentage of revenue committed to
+personnel is never recalculated here** — it arrives computed and filed by the
+municipality itself, over its *adjusted* net revenue. Filings that fall outside
+0–100% of revenue are shown as filed and labelled implausible, because
+correcting them would invent a number and hiding them would decide which
+filings a reader may see.
