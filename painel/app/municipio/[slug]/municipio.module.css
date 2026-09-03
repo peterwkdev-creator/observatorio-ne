@@ -295,3 +295,48 @@
   padding: var(--e-3) 0;
   border-bottom: 1px solid var(--borda);
 }
+
+/* ---- Mudanca de composicao entre anos --------------------------------- */
+
+.mudancas {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--e-4);
+  display: grid;
+  gap: var(--e-2);
+}
+
+.mudancas li {
+  font-size: var(--texto-base);
+  color: var(--tinta-suave);
+  padding-left: var(--e-3);
+  border-left: 3px solid var(--borda-forte);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--e-2);
+}
+
+.mudancas strong {
+  color: var(--tinta);
+}
+
+/* Verde para "subiu" e vermelho para "caiu" seria julgamento: mais gasto em
+   previdencia nao e bom nem ruim, e o painel nao opina. A cor aqui diz apenas
+   a DIRECAO, com dois tons neutros da mesma escala. */
+.subiu {
+  border-left-color: var(--acento);
+}
+.caiu {
+  border-left-color: var(--tinta-fraca);
+}
+
+.pontos {
+  font-size: var(--texto-sm);
+  font-variant-numeric: tabular-nums;
+  padding: 1px var(--e-2);
+  border-radius: 999px;
+  background: var(--acento-suave);
+  color: var(--tinta-suave);
+  white-space: nowrap;
+}

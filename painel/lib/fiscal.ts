@@ -116,6 +116,29 @@ export type Funcoes = {
   colunasMunicipio: string[];
   /** `{ "2927408": [totalDeclarado, [[indice, valor], ...]] }`, em reais inteiros. */
   porMunicipio: Record<string, EntradaFuncoes>;
+  /**
+   * O **mesmo bimestre do ano anterior**. `null` quando não foi coletado.
+   *
+   * Nunca o período anterior, e a diferença foi medida, não suposta. O RREO é
+   * acumulado no ano: o 6º bimestre **contém** o 4º — mediana da razão b4/b6 de
+   * **0,629** em 1.414 municípios, ou seja 63% do valor do 6º *é* o do 4º. A
+   * fatia de cada função mal se mexe entre eles: deslocamento mediano de
+   * **0,96 pp**. Uma frase de tendência ali seria ruído vestido de descoberta.
+   *
+   * Entre o mesmo bimestre de dois anos as acumulações são disjuntas, e o
+   * deslocamento mediano sobe para **1,67 pp** — 42% das comparações movem 2
+   * pontos ou mais, 25% movem 3 ou mais.
+   */
+  anterior: FuncoesAnterior | null;
+};
+
+export type FuncoesAnterior = {
+  exercicio: number;
+  periodo: number;
+  coletadoEm: string | null;
+  cobertura: { consultados: number; publicaram: number; naoFecham: number };
+  /** Compartilha o array `rotulos` do bloco pai. */
+  porMunicipio: Record<string, EntradaFuncoes>;
 };
 
 export type EntradaFuncoes = [
@@ -142,6 +165,111 @@ export type FatiaFuncao = {
    *  ninguém entenda por quê. */
   percentual: number | null;
 };
+
+/**
+ * O deslocamento de fatia abaixo do qual a página diz "praticamente estável".
+ *
+ * **1,0 ponto percentual, e o número saiu da medição, não do gosto.** Sobre
+ * 2.699 comparações de fatia (educação e saúde, 1.351 municípios, 2023/6 contra
+ * 2024/6): o quartil inferior desloca 0,75 pp, a mediana 1,67 pp e o p90 4,78
+ * pp. Cortar em 1,0 deixa **67%** das comparações com uma frase de movimento e
+ * manda 33% para "estável" — e evita o erro que a série de pessoal quase
+ * cometeu, de narrar tendência sobre um movimento que é ruído.
+ */
+export const DESLOCAMENTO_MINIMO = 1.0;
+
+/**
+ * A faixa de crescimento do gasto total que torna dois anos comparáveis.
+ *
+ * Medido: o crescimento nominal mediano de 2023 para 2024 foi de **1,193**
+ * (19,3%), com p5 em 1,04 e p95 em 1,43; apenas 2% encolheram. Fora de
+ * 0,5–3,0 não há município — há declaração quebrada num dos dois anos, e o
+ * mínimo observado foi 0,0000 e o máximo 9,5.
+ *
+ * Igual à faixa de plausibilidade do percentual de pessoal: não corrige nada,
+ * apenas se recusa a construir frase sobre número que não descreve o mundo.
+ */
+export const CRESCIMENTO_MINIMO = 0.5;
+export const CRESCIMENTO_MAXIMO = 3.0;
+
+export type Deslocamento = {
+  nome: string;
+  /** Fatia no período em destaque, em % do total declarado. */
+  atual: number;
+  /** Fatia no mesmo bimestre do ano anterior. */
+  anterior: number;
+  /** `atual - anterior`, em pontos percentuais. */
+  pontos: number;
+};
+
+export type Comparacao = {
+  exercicioAtual: number;
+  exercicioAnterior: number;
+  periodo: number;
+  /** O crescimento nominal do gasto total entre os dois anos. */
+  crescimento: number;
+  /** As funções presentes nos dois anos, pela maior mudança em módulo. */
+  deslocamentos: Deslocamento[];
+};
+
+/**
+ * A mudança de composição do gasto entre o mesmo bimestre de dois anos.
+ *
+ * `null` quando falta um dos dois anos, quando algum total é zero ou negativo,
+ * ou quando o crescimento cai fora da faixa comparável — nesse último caso um
+ * dos relatórios está quebrado, e comparar publicaria uma mudança que não houve.
+ */
+export function compararFuncoes(
+  s: SnapshotFiscal,
+  codigo: number,
+): Comparacao | null {
+  const bloco = s.funcoes;
+  const antes = bloco?.anterior;
+  if (!bloco || !antes) return null;
+
+  const a = bloco.porMunicipio[String(codigo)];
+  const b = antes.porMunicipio[String(codigo)];
+  if (!a || !b) return null;
+
+  const [totalAtual, valoresAtual] = a;
+  const [totalAntes, valoresAntes] = b;
+  if (!totalAtual || !totalAntes || totalAtual <= 0 || totalAntes <= 0) return null;
+
+  const crescimento = totalAtual / totalAntes;
+  if (crescimento < CRESCIMENTO_MINIMO || crescimento > CRESCIMENTO_MAXIMO) {
+    return null;
+  }
+
+  // Os dois lados compartilham `bloco.rotulos`, então o índice é a chave —
+  // comparar por nome exigiria confiar que a grafia não mudou entre anos.
+  const fatiaAntes = new Map(
+    valoresAntes.map(([i, v]) => [i, (v * 100) / totalAntes]),
+  );
+  const deslocamentos: Deslocamento[] = [];
+  for (const [i, v] of valoresAtual) {
+    const anterior = fatiaAntes.get(i);
+    // Função que não existia no ano anterior não tem deslocamento: tem
+    // estreia. Tratá-la como "subiu de 0%" inventaria uma queda anterior que
+    // ninguém declarou.
+    if (anterior === undefined) continue;
+    const atual = (v * 100) / totalAtual;
+    deslocamentos.push({
+      nome: bloco.rotulos[i] ?? `Função ${i}`,
+      atual,
+      anterior,
+      pontos: atual - anterior,
+    });
+  }
+  deslocamentos.sort((x, y) => Math.abs(y.pontos) - Math.abs(x.pontos));
+
+  return {
+    exercicioAtual: bloco.exercicio,
+    exercicioAnterior: antes.exercicio,
+    periodo: bloco.periodo,
+    crescimento,
+    deslocamentos,
+  };
+}
 
 /**
  * As funções de um município, da maior para a menor, com a fatia de cada uma.

@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { slugUf, vizinhosDe } from "../../../lib/estado";
 import {
-  FUNCOES_DA_PORTARIA, funcoesDe, indexarFiscal, ROTULO_FAIXA, rotuloPeriodo,
-  slugDe, variacao,
+  compararFuncoes, DESLOCAMENTO_MINIMO, FUNCOES_DA_PORTARIA, funcoesDe,
+  indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
 } from "../../../lib/fiscal";
 import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
 import FuncoesBarras from "../../componentes/funcoes-barras";
@@ -122,6 +122,14 @@ export default async function PaginaMunicipio(
     ? `${fiscal.funcoes.periodo}º bimestre de ${fiscal.funcoes.exercicio}`
     : "";
   const maior = funcoes?.fatias[0] ?? null;
+
+  // A mudança de composição entre o mesmo bimestre de dois anos. `null` quando
+  // falta um dos anos ou quando o crescimento do total sai da faixa comparável
+  // -- ali um dos dois relatórios está quebrado.
+  const comparacao = compararFuncoes(fiscal, m.codigo);
+  const mudancas = (comparacao?.deslocamentos ?? [])
+    .filter((d) => Math.abs(d.pontos) >= DESLOCAMENTO_MINIMO)
+    .slice(0, 5);
 
   // JSON-LD: é o que faz o Google entender que a página descreve um lugar e um
   // conjunto de dados, em vez de tratá-la como texto solto.
@@ -432,6 +440,61 @@ export default async function PaginaMunicipio(
             {FUNCOES_DA_PORTARIA} funções previstas na Portaria MOG 42/1999, e a
             soma delas fecha com o total que o próprio município declarou.
             Fonte: {fiscal.funcoes?.fonte}.
+          </p>
+        </section>
+      )}
+
+      {comparacao && (
+        <section className={estilos.texto}>
+          <h2>O que mudou de {comparacao.exercicioAnterior} para{" "}
+            {comparacao.exercicioAtual}</h2>
+          <p>
+            Entre o {comparacao.periodo}º bimestre de{" "}
+            {comparacao.exercicioAnterior} e o mesmo bimestre de{" "}
+            {comparacao.exercicioAtual}, o gasto total de {m.nome}{" "}
+            {comparacao.crescimento >= 1 ? "cresceu" : "caiu"}{" "}
+            <strong>
+              {br(Math.abs(comparacao.crescimento - 1) * 100, 1)}%
+            </strong>{" "}
+            em valores nominais.{" "}
+            {mudancas.length === 0 ? (
+              <>
+                A <strong>composição</strong> do gasto, porém, ficou
+                praticamente igual: nenhuma função mudou de fatia em mais de{" "}
+                {br(DESLOCAMENTO_MINIMO, 1)} ponto percentual.
+              </>
+            ) : (
+              <>
+                E a <strong>composição</strong> mudou: abaixo, as funções cujo
+                peso no orçamento se deslocou mais de{" "}
+                {br(DESLOCAMENTO_MINIMO, 1)} ponto percentual.
+              </>
+            )}
+          </p>
+
+          {mudancas.length > 0 && (
+            <ul className={estilos.mudancas}>
+              {mudancas.map((d) => (
+                <li key={d.nome} className={d.pontos > 0 ? estilos.subiu : estilos.caiu}>
+                  <strong>{d.nome}</strong>{" "}
+                  <span className="tabular">
+                    {br(d.anterior, 1)}% → {br(d.atual, 1)}%
+                  </span>{" "}
+                  <span className={estilos.pontos}>
+                    {d.pontos > 0 ? "+" : "−"}
+                    {br(Math.abs(d.pontos), 1)} pp
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className={estilos.ressalva}>
+            A comparação é entre o <strong>mesmo bimestre</strong> de dois anos,
+            e não entre bimestres do mesmo ano — o RREO é acumulado, então o 6º
+            bimestre já contém o 4º e comparar os dois mediria quase nada. Os
+            valores são <strong>nominais</strong>: parte do crescimento é
+            inflação, e este painel não deflaciona nada.
           </p>
         </section>
       )}

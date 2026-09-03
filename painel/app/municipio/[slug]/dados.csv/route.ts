@@ -68,6 +68,25 @@ export async function GET(
       fiscal.funcoes?.coletadoEm ?? ""]);
   }
 
+  // O mesmo bimestre do ano anterior, quando coletado. Em formato longo isto
+  // são apenas linhas com outro `periodo` -- nenhuma coluna muda, e quem já
+  // baixou o arquivo antes continua abrindo do mesmo jeito.
+  const antes = fiscal.funcoes?.anterior;
+  const entradaAntes = antes?.porMunicipio[String(m.codigo)];
+  if (antes && entradaAntes) {
+    const [totalAntes, valoresAntes] = entradaAntes;
+    const periodoAntes = `${antes.exercicio}/${antes.periodo}`;
+    for (const [i, valor] of valoresAntes) {
+      linhas.push([...comum,
+        `Despesa liquidada — ${fiscal.funcoes?.rotulos[i] ?? `Função ${i}`}`,
+        periodoAntes, valor, "R$", "SICONFI", antes.coletadoEm ?? ""]);
+    }
+    if (totalAntes !== null) {
+      linhas.push([...comum, "Despesa liquidada — total declarado",
+        periodoAntes, totalAntes, "R$", "SICONFI", antes.coletadoEm ?? ""]);
+    }
+  }
+
   const csv = paraCsv(
     ["codigo_ibge", "municipio", "uf", "indicador", "periodo", "valor",
      "unidade", "fonte", "coletado_em"],
