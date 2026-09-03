@@ -1,0 +1,192 @@
+.pagina {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--e-8) var(--e-6) var(--e-16);
+}
+
+.trilha {
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
+  margin-bottom: var(--e-6);
+}
+
+.trilha a {
+  color: var(--acento);
+}
+
+.titulo {
+  font-size: var(--texto-3xl);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--e-3);
+}
+
+.uf {
+  font-size: var(--texto-lg);
+  font-weight: 600;
+  color: var(--tinta-fraca);
+  vertical-align: middle;
+  margin-left: var(--e-2);
+}
+
+.chamada {
+  font-size: var(--texto-base);
+  line-height: 1.6;
+  color: var(--tinta-suave);
+  max-width: 62ch;
+  margin: 0 0 var(--e-8);
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--e-4);
+  margin-bottom: var(--e-12);
+}
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: var(--e-6);
+  box-shadow: var(--sombra);
+}
+
+.rotulo {
+  font-size: var(--texto-sm);
+  font-weight: 600;
+  color: var(--tinta-suave);
+  margin: 0 0 var(--e-2);
+}
+
+.valor {
+  font-size: var(--texto-2xl);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--e-2);
+}
+
+.fonte {
+  font-size: var(--texto-xs);
+  color: var(--tinta-fraca);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.selo {
+  display: inline-block;
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  border-radius: 999px;
+  padding: var(--e-1) var(--e-3);
+  margin: 0 0 var(--e-2);
+  background: var(--acento-suave);
+  color: var(--tinta-suave);
+}
+
+/* A faixa colore a borda do cartão, e o rótulo em texto vai junto — cor
+   sozinha exclui quem não a distingue. */
+.acima-legal {
+  border-left: 3px solid #9a3412;
+}
+.acima-legal .valor,
+.acima-legal .selo {
+  color: #9a3412;
+}
+
+.acima-prudencial {
+  border-left: 3px solid #8a5a00;
+}
+.acima-prudencial .valor,
+.acima-prudencial .selo {
+  color: #8a5a00;
+}
+
+.abaixo {
+  border-left: 3px solid var(--positivo);
+}
+
+.sem-dado {
+  border-left: 3px solid var(--borda-forte);
+}
+.sem-dado .valor {
+  color: var(--tinta-fraca);
+}
+
+@media (prefers-color-scheme: dark) {
+  .acima-legal {
+    border-left-color: #fca582;
+  }
+  .acima-legal .valor,
+  .acima-legal .selo {
+    color: #fca582;
+  }
+  .acima-prudencial {
+    border-left-color: #e8bd6a;
+  }
+  .acima-prudencial .valor,
+  .acima-prudencial .selo {
+    color: #e8bd6a;
+  }
+}
+
+.texto {
+  max-width: 68ch;
+  margin-bottom: var(--e-12);
+}
+
+.texto h2 {
+  font-size: var(--texto-xl);
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--e-4);
+}
+
+.texto p {
+  font-size: var(--texto-base);
+  line-height: 1.65;
+  color: var(--tinta-suave);
+  margin: 0 0 var(--e-4);
+}
+
+.texto strong {
+  color: var(--tinta);
+}
+
+.ressalva {
+  font-size: var(--texto-sm) !important;
+  color: var(--tinta-fraca) !important;
+  border-left: 2px solid var(--borda);
+  padding-left: var(--e-4);
+}
+
+.vizinhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2) var(--e-4);
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--e-4);
+}
+
+.vizinhos a {
+  font-size: var(--texto-sm);
+  color: var(--acento);
+}
+
+.rodape {
+  border-top: 1px solid var(--borda);
+  padding-top: var(--e-4);
+  font-size: var(--texto-xs);
+  line-height: 1.55;
+  color: var(--tinta-fraca);
+}
+
+@media (max-width: 40rem) {
+  .pagina {
+    padding: var(--e-6) var(--e-4) var(--e-12);
+  }
+  .titulo {
+    font-size: var(--texto-2xl);
+  }
+}
