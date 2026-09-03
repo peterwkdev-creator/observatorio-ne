@@ -1,0 +1,42 @@
+# Metadados no padrão PEP 621, na tabela [project] — a forma canônica descrita
+# pela especificação da PyPA. Ver:
+#   https://packaging.python.org/en/latest/specifications/pyproject-toml/
+#
+# LAYOUT PLANO, e não `src/`, por decisão com fonte. A PyPA **não** recomenda um
+# sobre o outro; ela enuncia o trade-off, e o decisivo aqui é este:
+#   "The src layout requires installation of the project to be able to run its
+#    code, and the flat layout does not."
+#   https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
+# O `stack.md` deste workspace exige rodar a partir de um checkout limpo sem
+# instalar nada. Layout plano é o único que atende.
+
+[project]
+name = "observatorio-ne"
+version = "0.1.0"
+description = "Dados abertos dos 1.794 municípios do Nordeste, do IBGE, com procedência."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Peter Wilhelm Kretzschmar" }]
+keywords = ["open-data", "ibge", "brazil", "northeast", "municipalities"]
+
+# Vazio de propósito: só biblioteca padrão. Cada dependência nova é código de
+# terceiro que passa a ser responsabilidade nossa — ver `stack.md`.
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/peterwkdev-creator/observatorio-ne"
+
+# Ferramentas de lint/tipo são OPCIONAIS: nada aqui é necessário para rodar nem
+# para testar. A configuração fica versionada para que, quem as usar, use com os
+# mesmos critérios.
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true

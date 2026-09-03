@@ -1,0 +1,67 @@
+# Ingestão agendada dos dados do IBGE.
+#
+# Commita **apenas quando o dado muda**. O Censo é de 2022 e o PIB é anual, então
+# a maior parte das execuções não vai produzir commit nenhum — e isso é o
+# comportamento certo, não uma falha. Commit vazio semanal seria atividade
+# fabricada, que é exatamente o que este projeto não faz.
+
+name: Atualizar dados do IBGE
+
+on:
+  schedule:
+    # Segunda-feira, 09:00 UTC (06:00 em São Paulo). Semanal, porque dado anual
+    # não muda mais rápido que isso e cada execução são ~36 requisições à API.
+    - cron: "0 9 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ingestao
+  cancel-in-progress: false
+
+jobs:
+  ingerir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Sem `pip install`: o motor usa só a biblioteca padrão.
+
+      - name: Testes
+        run: python -m unittest discover -s tests -t .
+
+      - name: Ingerir municípios e indicadores
+        run: |
+          python -m observatorio ingerir-municipios --pausa 2
+          python -m observatorio ingerir-indicador populacao-censo-2022 --pausa 2
+          python -m observatorio ingerir-indicador populacao-estimada --pausa 2
+          python -m observatorio ingerir-indicador pib-municipal --pausa 2
+
+      # Integridade contra a própria fonte. Sai com código 1 se a soma dos
+      # municípios divergir do agregado regional do IBGE — e aí o workflow
+      # falha ANTES de publicar número errado.
+      - name: Conferir contra o agregado regional do IBGE
+        run: python -m observatorio conferir
+
+      - name: Exportar o snapshot
+        run: python -m observatorio exportar
+
+      - name: Commitar apenas se o dado mudou
+        run: |
+          if git diff --quiet -- painel/dados/snapshot.json; then
+            echo "Nenhuma mudança no dado do IBGE. Nada a commitar."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add painel/dados/snapshot.json
+          git commit -m "atualiza o snapshot do IBGE ($(date -u +%Y-%m-%d))"
+          git push

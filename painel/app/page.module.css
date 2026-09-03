@@ -1,0 +1,202 @@
+.pagina {
+  max-width: var(--largura-max);
+  margin: 0 auto;
+  padding: var(--e-8) var(--e-4) var(--e-16);
+}
+
+@media (min-width: 48rem) {
+  .pagina {
+    padding: var(--e-16) var(--e-8) var(--e-16);
+  }
+}
+
+/* ---------------------------------------------------------------- cabeçalho */
+
+.cabecalho {
+  margin-bottom: var(--e-12);
+  max-width: 60ch;
+}
+
+.selo {
+  display: inline-block;
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--acento);
+  background: var(--acento-suave);
+  padding: var(--e-1) var(--e-3);
+  border-radius: 999px;
+  margin-bottom: var(--e-4);
+}
+
+.titulo {
+  font-size: var(--texto-2xl);
+  margin-bottom: var(--e-3);
+}
+
+@media (min-width: 48rem) {
+  .titulo {
+    font-size: var(--texto-3xl);
+  }
+}
+
+.subtitulo {
+  color: var(--tinta-suave);
+  font-size: var(--texto-lg);
+}
+
+.coletadoEm {
+  margin-top: var(--e-4);
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
+}
+
+/* ------------------------------------------------------------------ cartões */
+
+.cartoes {
+  display: grid;
+  gap: var(--e-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  margin-bottom: var(--e-12);
+}
+
+.cartao {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: var(--e-6);
+  box-shadow: var(--sombra);
+}
+
+.cartaoRotulo {
+  font-size: var(--texto-sm);
+  color: var(--tinta-suave);
+  font-weight: 500;
+  margin-bottom: var(--e-2);
+}
+
+.cartaoValor {
+  font-size: var(--texto-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.cartaoUnidade {
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
+  font-weight: 400;
+  margin-left: var(--e-1);
+}
+
+.cartaoFonte {
+  margin-top: var(--e-3);
+  padding-top: var(--e-3);
+  border-top: 1px solid var(--borda);
+  font-size: var(--texto-xs);
+  color: var(--tinta-fraca);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------- seções */
+
+.secao {
+  margin-bottom: var(--e-12);
+}
+
+.secaoTitulo {
+  font-size: var(--texto-xl);
+  margin-bottom: var(--e-2);
+}
+
+.secaoNota {
+  color: var(--tinta-suave);
+  font-size: var(--texto-sm);
+  margin-bottom: var(--e-6);
+  max-width: 65ch;
+}
+
+/* ------------------------------------------------------------------ tabelas */
+
+.rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--superficie);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--texto-sm);
+}
+
+.tabela caption {
+  text-align: left;
+  padding: var(--e-4) var(--e-4) 0;
+  font-size: var(--texto-xs);
+  color: var(--tinta-fraca);
+}
+
+.tabela th,
+.tabela td {
+  padding: var(--e-3) var(--e-4);
+  text-align: left;
+  border-bottom: 1px solid var(--borda);
+  white-space: nowrap;
+}
+
+.tabela thead th {
+  position: sticky;
+  top: 0;
+  background: var(--superficie);
+  font-size: var(--texto-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tinta-suave);
+  font-weight: 600;
+  border-bottom: 1px solid var(--borda-forte);
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabela tbody tr:hover td {
+  background: var(--acento-suave);
+}
+
+.numero {
+  text-align: right;
+}
+
+.ausente {
+  color: var(--tinta-fraca);
+}
+
+/* ------------------------------------------------------------------- rodapé */
+
+.rodape {
+  border-top: 1px solid var(--borda);
+  padding-top: var(--e-6);
+  font-size: var(--texto-sm);
+  color: var(--tinta-suave);
+  max-width: 70ch;
+}
+
+.rodape p + p {
+  margin-top: var(--e-3);
+}
+
+.aviso {
+  background: var(--acento-suave);
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--acento);
+  border-radius: var(--raio);
+  padding: var(--e-4);
+  font-size: var(--texto-sm);
+  color: var(--tinta-suave);
+  margin-bottom: var(--e-8);
+  max-width: 70ch;
+}

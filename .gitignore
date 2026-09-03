@@ -1,0 +1,35 @@
+# Documento interno: escopo, decisões e riscos. Não vai para o repositório
+# público — ver `.claude/rules/github.md`.
+#
+# Este sistema tem repositorio proprio desde 02/09/2026, entao a linha vale
+# aqui e o ESPEC.md continua versionado no repositorio da raiz.
+ESPEC.md
+
+# O banco NAO e versionado, e a decisao tem consequencia: sao 1,5 MB de binario
+# que nao faz diff, e um commit semanal duplicaria o arquivo inteiro toda vez.
+#
+# O que se perde e o historico de COLETA (quando cada valor foi visto). O que
+# substitui e melhor: o snapshot.json e texto, e commitado so quando o dado
+# muda — entao **o proprio historico do git vira o log de coleta**, com diff
+# legivel de qual numero mudou e quando. O historico dos PERIODOS (2021, 2022,
+# 2024) vem da fonte e nao depende disso.
+*.db
+*.db-journal
+*.db-wal
+
+# Saída de execução em segundo plano.
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node (painel, a partir da etapa 4)
+node_modules/
+.next/
+out/

@@ -1,0 +1,95 @@
+.controles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-4);
+  align-items: flex-end;
+  margin-bottom: var(--e-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-1);
+}
+
+.campo label {
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  color: var(--tinta-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.campo input,
+.campo select {
+  font: inherit;
+  font-size: var(--texto-sm);
+  padding: var(--e-2) var(--e-3);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  color: var(--tinta);
+  min-width: 12rem;
+}
+
+.campo select {
+  min-width: 7rem;
+}
+
+.contagem {
+  font-size: var(--texto-sm);
+  color: var(--tinta-suave);
+  margin-left: auto;
+  padding-bottom: var(--e-2);
+}
+
+/* O cabeçalho ordenável é um <button> de verdade, não um <th> com onClick:
+   foco, Enter e Espaço vêm de graça e o leitor de tela sabe o que é. */
+.ordenar {
+  font: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-1);
+}
+
+.ordenar:hover {
+  color: var(--acento);
+}
+
+.ordenarNumero {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.vazio {
+  text-align: center;
+  color: var(--tinta-fraca);
+  padding: var(--e-8) var(--e-4);
+  white-space: normal;
+}
+
+.maisBotao {
+  font: inherit;
+  font-size: var(--texto-sm);
+  margin-top: var(--e-4);
+  padding: var(--e-3) var(--e-6);
+  border: 1px solid var(--borda-forte);
+  border-radius: var(--raio);
+  background: var(--superficie);
+  color: var(--tinta);
+  cursor: pointer;
+  width: 100%;
+}
+
+.maisBotao:hover {
+  border-color: var(--acento);
+  color: var(--acento);
+}
