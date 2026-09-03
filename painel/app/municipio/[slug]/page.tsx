@@ -197,7 +197,22 @@ export default async function PaginaMunicipio(
 
       <section className={estilos.texto}>
         <h2>O que o gasto com pessoal significa aqui</h2>
-        {f?.percentual !== null && f?.percentual !== undefined ? (
+        {f?.faixa === "implausivel" ? (
+          <p>
+            {m.nome} declarou <strong>{br(f.percentual, 2)}%</strong> da sua
+            receita corrente líquida ajustada comprometidos com pessoal no{" "}
+            {quadrimestre} — mais do que <em>toda</em> a receita do município.
+            Isso não descreve uma prefeitura em crise: descreve um formulário
+            preenchido errado. Em reais, o relatório traz R$ {br(f.despesa, 2)}{" "}
+            de despesa sobre R$ {br(f.rclAjustada, 2)} de receita.
+            <br />
+            <br />
+            O número acima é <strong>o que o município enviou ao SICONFI</strong>,
+            conferido linha a linha contra a API. Este painel não o corrige —
+            corrigir seria inventar um valor — mas também não o apresenta como se
+            fosse verdade sobre o gasto real.
+          </p>
+        ) : f?.percentual !== null && f?.percentual !== undefined ? (
           <p>
             No {quadrimestre}, {m.nome} declarou{" "}
             <strong>{br(f.percentual, 2)}%</strong> da sua receita corrente líquida

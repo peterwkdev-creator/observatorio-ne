@@ -87,6 +87,32 @@
 
 /* A faixa colore a borda do cartão, e o rótulo em texto vai junto — cor
    sozinha exclui quem não a distingue. */
+
+/* Implausível é cinza-arroxeado de propósito: não é "pior que acima do teto",
+   é OUTRA COISA — um dado que não se deve ler como gasto real. Usar o mesmo
+   vermelho do alerta faria o leitor ordenar os dois na mesma escala. */
+.implausivel {
+  border-left: 3px dashed #6d5a8a;
+}
+.implausivel .valor {
+  color: #6d5a8a;
+}
+.implausivel .selo {
+  background: #f1eef7;
+  color: #4c3d66;
+}
+@media (prefers-color-scheme: dark) {
+  .implausivel {
+    border-left-color: #b9a5d6;
+  }
+  .implausivel .valor {
+    color: #b9a5d6;
+  }
+  .implausivel .selo {
+    background: #241c31;
+    color: #cbbce2;
+  }
+}
 .acima-legal {
   border-left: 3px solid #9a3412;
 }

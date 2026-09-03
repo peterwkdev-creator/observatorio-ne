@@ -10,7 +10,28 @@
  * e a razão de os dois sistemas conversarem sem nenhuma tradução.
  */
 
-export type Faixa = "acima-legal" | "acima-prudencial" | "abaixo" | "sem-dado";
+export type Faixa =
+  | "implausivel"
+  | "acima-legal"
+  | "acima-prudencial"
+  | "abaixo"
+  | "sem-dado";
+
+/**
+ * Acima disto o número deixa de ser alarmante e passa a ser impossível.
+ *
+ * Gastar mais com pessoal do que TODA a receita corrente líquida não descreve
+ * um município em crise: descreve um formulário preenchido errado. Seis dos
+ * 1.414 que entregaram declararam isso no 3º quadrimestre de 2024 —
+ * Guaratinga/BA marcou **371,02%**, R$ 110 milhões de despesa sobre R$ 29,6
+ * milhões de receita, e a conta fecha com o que o próprio município enviou.
+ *
+ * Verificado direto na API antes de virar regra: a leitura está certa, a
+ * declaração é que não está. Por isso o valor é **exibido como declarado e
+ * marcado como implausível** — corrigir seria inventar um número, e esconder
+ * seria escolher quais declarações o leitor pode ver.
+ */
+export const LIMITE_PLAUSIVEL = 100;
 
 /** Uma linha do snapshot fiscal, no formato compacto de array. */
 export type LinhaFiscal = [
@@ -53,6 +74,7 @@ export type Fiscal = {
 };
 
 export const ROTULO_FAIXA: Record<Faixa, string> = {
+  implausivel: "Valor implausível — provável erro de preenchimento",
   "acima-legal": "Acima do limite legal",
   "acima-prudencial": "Acima do limite prudencial",
   abaixo: "Dentro do limite",
@@ -68,6 +90,7 @@ export function faixaDe(
   limites: SnapshotFiscal["limites"],
 ): Faixa {
   if (percentual === null) return "sem-dado";
+  if (percentual > LIMITE_PLAUSIVEL) return "implausivel";
   if (percentual > limites.legal) return "acima-legal";
   if (percentual > (limitePrudencial ?? limites.prudencial)) {
     return "acima-prudencial";
