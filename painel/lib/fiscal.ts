@@ -18,20 +18,28 @@ export type Faixa =
   | "sem-dado";
 
 /**
- * Acima disto o número deixa de ser alarmante e passa a ser impossível.
+ * A faixa do plausivel: **entre 0 e 100%**.
  *
- * Gastar mais com pessoal do que TODA a receita corrente líquida não descreve
- * um município em crise: descreve um formulário preenchido errado. Seis dos
- * 1.414 que entregaram declararam isso no 3º quadrimestre de 2024 —
- * Guaratinga/BA marcou **371,02%**, R$ 110 milhões de despesa sobre R$ 29,6
- * milhões de receita, e a conta fecha com o que o próprio município enviou.
+ * Acima de 100% o municipio declara gastar mais com pessoal do que TODA a sua
+ * receita; abaixo de zero, declara gasto negativo. Nenhum dos dois descreve uma
+ * prefeitura -- descrevem um formulario preenchido errado.
  *
- * Verificado direto na API antes de virar regra: a leitura está certa, a
- * declaração é que não está. Por isso o valor é **exibido como declarado e
- * marcado como implausível** — corrigir seria inventar um número, e esconder
- * seria escolher quais declarações o leitor pode ver.
+ * Os dois extremos apareceram no dado real de 2024, e por motivos diferentes:
+ *
+ * - Guaratinga/BA declarou **371,02%** (R$ 110 mi sobre R$ 29,6 mi).
+ * - Paripueira/AL declarou **despesa negativa** e portanto **-19,35%**.
+ *
+ * O caso negativo e o mais perigoso, e por uma razao que custou perceber: ele e
+ * **internamente coerente**. `despesa / RCL` da exatamente -19,35%, entao a
+ * conferencia NAO o acusa -- coerencia nao e plausibilidade. E num ranking por
+ * percentual ele iria para o **fim da lista**, parecendo o municipio mais
+ * economico do Nordeste.
+ *
+ * Exibidos como declarados e marcados. Corrigir seria inventar numero; esconder
+ * seria escolher quais declaracoes o leitor pode ver.
  */
 export const LIMITE_PLAUSIVEL = 100;
+export const MINIMO_PLAUSIVEL = 0;
 
 /** Uma linha do snapshot fiscal, no formato compacto de array. */
 export type LinhaFiscal = [
@@ -86,17 +94,29 @@ export function rotuloPeriodo(exercicio: number, periodo: number): string {
   return `${exercicio}/${periodo}`;
 }
 
+/** Um ponto está na faixa que descreve uma prefeitura de verdade? */
+export function pontoPlausivel(p: PontoSerie): boolean {
+  return p[3] >= MINIMO_PLAUSIVEL && p[3] <= LIMITE_PLAUSIVEL;
+}
+
 /**
- * A variação entre o primeiro e o último ponto da série, em pontos percentuais.
- * `null` quando há menos de dois pontos — uma série de um ponto não tem
+ * A variação entre o primeiro e o último ponto **plausível** da série.
+ *
+ * Filtrar os implausíveis não é preciosismo: sem isso, Paripueira/AL "subia
+ * 114,95 pontos percentuais" partindo de um -19,35% que a própria página marca
+ * como erro de preenchimento, e Guaratinga/BA "caía 254,55" partindo de 625%.
+ * Frases construídas sobre números que a página declara inválidos.
+ *
+ * `null` quando sobram menos de dois pontos — uma série de um ponto não tem
  * tendência, e fingir que tem seria inventar informação.
  */
 export function variacao(pontos: PontoSerie[] | undefined): number | null {
-  if (!pontos || pontos.length < 2) return null;
+  const bons = (pontos ?? []).filter(pontoPlausivel);
+  if (bons.length < 2) return null;
   // `at()` em vez de indexar: o tsconfig usa `noUncheckedIndexedAccess`, e ele
   // está certo em exigir a checagem -- série vazia existe.
-  const primeiro = pontos.at(0);
-  const ultimo = pontos.at(-1);
+  const primeiro = bons.at(0);
+  const ultimo = bons.at(-1);
   if (!primeiro || !ultimo) return null;
   return ultimo[3] - primeiro[3];
 }
@@ -128,6 +148,7 @@ export function faixaDe(
 ): Faixa {
   if (percentual === null) return "sem-dado";
   if (percentual > LIMITE_PLAUSIVEL) return "implausivel";
+  if (percentual < MINIMO_PLAUSIVEL) return "implausivel";
   if (percentual > limites.legal) return "acima-legal";
   if (percentual > (limitePrudencial ?? limites.prudencial)) {
     return "acima-prudencial";

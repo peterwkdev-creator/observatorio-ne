@@ -205,10 +205,18 @@ export default async function PaginaMunicipio(
           <p>
             {m.nome} declarou <strong>{br(f.percentual, 2)}%</strong> da sua
             receita corrente líquida ajustada comprometidos com pessoal no{" "}
-            {quadrimestre} — mais do que <em>toda</em> a receita do município.
-            Isso não descreve uma prefeitura em crise: descreve um formulário
-            preenchido errado. Em reais, o relatório traz R$ {br(f.despesa, 2)}{" "}
-            de despesa sobre R$ {br(f.rclAjustada, 2)} de receita.
+            {quadrimestre} —{" "}
+            {(f.percentual ?? 0) < 0
+              ? "um gasto negativo com pessoal, que nenhuma prefeitura pode ter"
+              : "mais do que toda a receita do município"}
+            . Isso não descreve uma prefeitura em crise: descreve um formulário
+            preenchido errado.
+            {(f.despesa ?? 0) > 0 && (f.rclAjustada ?? 0) > 0 && (
+              <>
+                {" "}Em reais, o relatório traz R$ {br(f.despesa, 2)} de despesa
+                sobre R$ {br(f.rclAjustada, 2)} de receita.
+              </>
+            )}
             <br />
             <br />
             O número acima é <strong>o que o município enviou ao SICONFI</strong>,
@@ -226,12 +234,23 @@ export default async function PaginaMunicipio(
             <strong>{br(f.limitePrudencial ?? fiscal.limites.prudencial, 2)}%</strong>{" "}
             como limite prudencial — passar dele já proíbe criar cargo, conceder
             aumento e contratar.
-            {f.despesa !== null && f.rclAjustada !== null && (
+            {/* Guarda contra o relatorio inconsistente: Sao Bernardo/MA
+                declarou receita AJUSTADA negativa (-R$ 208 mi) com percentual
+                plausivel. Imprimir "sobre R$ -208.239.413,34 de receita"
+                pareceria defeito do painel, e nao do relatorio. */}
+            {(f.despesa ?? 0) > 0 && (f.rclAjustada ?? 0) > 0 ? (
               <>
                 {" "}Em reais: R$ {br(f.despesa, 2)} de despesa sobre R${" "}
                 {br(f.rclAjustada, 2)} de receita.
               </>
-            )}
+            ) : f.rclAjustada !== null && (f.rclAjustada ?? 0) <= 0 ? (
+              <>
+                {" "}Os valores em reais deste relatório são inconsistentes: a
+                receita foi declarada como zero ou negativa, o que nenhum
+                município pode ter. O percentual acima é o que foi publicado; os
+                valores absolutos não são exibidos porque não descrevem nada.
+              </>
+            ) : null}
           </p>
         ) : f?.publicou === false ? (
           <p>
@@ -259,7 +278,12 @@ export default async function PaginaMunicipio(
         <section className={estilos.texto}>
           <h2>Como isso mudou ao longo do tempo</h2>
           <p>
-            {delta === null ? null : delta > 0 ? (
+            {delta === null ? (
+              <>
+                Não há dois quadrimestres com valor plausível o bastante para
+                falar em tendência — a tabela abaixo mostra o que foi publicado.
+              </>
+            ) : delta > 0 ? (
               <>
                 O comprometimento com pessoal <strong>subiu {br(delta, 2)} ponto
                 {Math.abs(delta) >= 2 ? "s" : ""} percentua
@@ -287,12 +311,25 @@ export default async function PaginaMunicipio(
                 </tr>
               </thead>
               <tbody>
-                {serie.map(([ex, pe, , pct]) => (
-                  <tr key={`${ex}-${pe}`}>
-                    <th scope="row">{rotuloPeriodo(ex, pe)}</th>
-                    <td className={`${estilos.num} tabular`}>{br(pct, 2)}%</td>
-                  </tr>
-                ))}
+                {serie.map(([ex, pe, , pct]) => {
+                  // Ponto implausivel na serie precisa da mesma marca que no
+                  // cartao. Paripueira/AL declarou -19,35% em 2024/1: sem
+                  // marca, a linha parece o melhor resultado da tabela.
+                  const fora = pct < 0 || pct > 100;
+                  return (
+                    <tr key={`${ex}-${pe}`}>
+                      <th scope="row">{rotuloPeriodo(ex, pe)}</th>
+                      <td
+                        className={`${estilos.num} tabular ${fora ? estilos.implausivel : ""}`}
+                      >
+                        {br(pct, 2)}%
+                        {fora && (
+                          <span className={estilos.marca}> implausível</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

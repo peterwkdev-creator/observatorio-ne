@@ -253,3 +253,16 @@
 .num {
   text-align: right;
 }
+
+.marca {
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  color: #6d5a8a;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .marca {
+    color: #b9a5d6;
+  }
+}
