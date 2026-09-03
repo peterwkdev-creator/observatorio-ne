@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { br, dataLegivel, expandir } from "@/lib/dados";
+import { slugUf } from "@/lib/estado";
 import { lerSnapshot } from "@/lib/servidor";
 import { Municipios } from "./municipios";
 import s from "./page.module.css";
@@ -90,7 +93,12 @@ export default async function Pagina() {
               {snapshot.ufs.map((uf) => (
                 <tr key={uf.sigla}>
                   <th scope="row">
-                    {uf.nome} <span className={s.ausente}>({uf.sigla})</span>
+                    {/* O unico link interno que a home tinha para conteudo era
+                        nenhum: a lista de municipios e componente de cliente,
+                        entao o HTML dela nao trazia `href` nenhum. Estes nove
+                        links sao a raiz do grafo do site. */}
+                    <Link href={`/estado/${slugUf(uf.sigla)}/`}>{uf.nome}</Link>{" "}
+                    <span className={s.ausente}>({uf.sigla})</span>
                   </th>
                   <td className={`${s.numero} tabular`}>
                     {br(uf.municipios)}

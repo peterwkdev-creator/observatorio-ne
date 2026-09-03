@@ -186,112 +186,148 @@
   padding-left: var(--e-4);
 }
 
-.vizinhos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--e-2) var(--e-4);
+/* ---- Especifico da pagina de estado ---------------------------------- */
+
+/* As contagens por faixa. Lista, nao tabela: sao cinco pares rotulo-numero,
+   e tabela de duas colunas para isso e cerimonia. */
+.faixas {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--e-4);
+  display: grid;
+  gap: var(--e-2);
 }
 
-.vizinhos a {
-  font-size: var(--texto-sm);
-  color: var(--acento);
+.faixas li {
+  font-size: var(--texto-base);
+  color: var(--tinta-suave);
+  padding-left: var(--e-3);
+  border-left: 3px solid var(--borda-forte);
 }
 
-.rodape {
-  border-top: 1px solid var(--borda);
-  padding-top: var(--e-4);
-  font-size: var(--texto-xs);
-  line-height: 1.55;
-  color: var(--tinta-fraca);
+.faixas li strong {
+  color: var(--tinta);
+  font-size: var(--texto-lg);
+  margin-right: var(--e-1);
 }
 
-@media (max-width: 40rem) {
-  .pagina {
-    padding: var(--e-6) var(--e-4) var(--e-12);
-  }
-  .titulo {
-    font-size: var(--texto-2xl);
-  }
-}
+.faixas li.acima-legal { border-left-color: #b4442f; }
+.faixas li.acima-prudencial { border-left-color: #b07d1a; }
+.faixas li.abaixo { border-left-color: var(--positivo); }
+.faixas li.implausivel { border-left-style: dashed; border-left-color: #6d5a8a; }
+.faixas li.sem-dado { border-left-color: var(--borda); }
 
-/* A tabela rola dentro do proprio container: a PAGINA nunca rola na
-   horizontal, que e o que quebra a leitura no celular. */
 .rolagem {
   overflow-x: auto;
+  margin-bottom: var(--e-12);
 }
 
-.serie {
+/* A lista completa de municipios -- ate 417 linhas. E o motivo desta pagina
+   existir: e daqui que sai o link interno para cada pagina de municipio. */
+.lista {
   border-collapse: collapse;
+  width: 100%;
+  min-width: 34rem;
   font-size: var(--texto-sm);
-  min-width: 18rem;
-  margin-bottom: var(--e-4);
 }
 
-.serie th,
-.serie td {
-  padding: var(--e-2) var(--e-4);
+.lista th,
+.lista td {
+  padding: var(--e-2) var(--e-3);
   border-bottom: 1px solid var(--borda);
   text-align: left;
 }
 
-.serie thead th {
+.lista thead th {
   font-size: var(--texto-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--tinta-fraca);
-  border-bottom: 1px solid var(--borda-forte);
-}
-
-.serie tbody th {
   font-weight: 600;
-  color: var(--tinta-suave);
+  position: sticky;
+  top: 0;
+  background: var(--fundo);
 }
 
-.num {
+.lista tbody th {
+  font-weight: 500;
+}
+
+.lista .num {
   text-align: right;
-}
-
-.marca {
-  font-size: var(--texto-xs);
-  font-weight: 600;
-  color: #6d5a8a;
   white-space: nowrap;
 }
 
+/* O selo de faixa dentro da lista: as classes de cor vem do bloco reaproveitado
+   acima, onde elas pintam `.selo` dentro de um `.cartao`. Aqui o seletor e
+   direto, entao a regra precisa ser repetida -- CSS module nao tem heranca. */
+.lista .selo {
+  display: inline-block;
+  font-size: var(--texto-xs);
+  padding: 2px var(--e-2);
+  border-radius: 999px;
+  background: var(--acento-suave);
+  color: var(--tinta-suave);
+  white-space: nowrap;
+}
+.lista .acima-legal { background: #fbeae6; color: #8c3320; }
+.lista .acima-prudencial { background: #fbf1dc; color: #7a5610; }
+.lista .abaixo { background: #e6f4ee; color: #17553f; }
+.lista .implausivel { background: #f1eef7; color: #4c3d66; }
+.lista .sem-dado { background: transparent; color: var(--tinta-fraca); }
+
 @media (prefers-color-scheme: dark) {
-  .marca {
-    color: #b9a5d6;
-  }
+  .lista .acima-legal { background: #35201b; color: #f0a693; }
+  .lista .acima-prudencial { background: #33290f; color: #e8c777; }
+  .lista .abaixo { background: #12291f; color: #7fd9b4; }
+  .lista .implausivel { background: #241d33; color: #c5b3e0; }
 }
 
-.downloads {
+.downloads,
+.estados {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--e-4);
 }
 
 .downloads li {
-  padding: var(--e-2) 0;
-  border-bottom: 1px solid var(--borda);
+  margin-bottom: var(--e-2);
+  font-size: var(--texto-base);
 }
 
-.downloads a {
-  font-weight: 600;
-  color: var(--acento);
+.estados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2) var(--e-4);
 }
 
-.downloads .fonte {
-  display: inline;
+.rodape {
+  border-top: 1px solid var(--borda);
+  padding-top: var(--e-4);
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
 }
 
-/* O grafico e complemento da tabela, nao substituto: mesma largura de leitura,
-   sem moldura que o transforme no elemento principal da secao. */
-.grafico {
-  max-width: 34rem;
-  margin: 0 0 var(--e-6);
-  padding: var(--e-3) 0;
-  border-bottom: 1px solid var(--borda);
+/* Em tela estreita a coluna de situacao sai. E a mais redundante das quatro:
+   o percentual esta na coluna ao lado e os dois limites estao escritos logo
+   acima, entao a tarja repete o que a linha ja diz. Com ela, a tabela pedia
+   544px e a propria coluna do percentual ficava fora da tela em 375 -- rolar
+   na horizontal para ler o numero principal e pior que perder a tarja.
+
+   A classe tem de estar no `<th>` do cabecalho tambem: escondendo so o `<td>`,
+   o cabecalho fica com uma coluna a mais que o corpo e a tabela desalinha. */
+@media (max-width: 34rem) {
+  .lista {
+    min-width: 0;
+  }
+  .lista .situacao {
+    display: none;
+  }
+  .lista th,
+  .lista td {
+    padding: var(--e-2) var(--e-1);
+  }
+  .lista thead th {
+    white-space: normal;
+  }
 }

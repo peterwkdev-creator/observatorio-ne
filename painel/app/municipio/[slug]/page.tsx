@@ -3,12 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
+import { slugUf, vizinhosDe } from "../../../lib/estado";
 import {
   FUNCOES_DA_PORTARIA, funcoesDe, indexarFiscal, ROTULO_FAIXA, rotuloPeriodo,
   slugDe, variacao,
 } from "../../../lib/fiscal";
 import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
-import FuncoesBarras from "./funcoes-barras";
+import FuncoesBarras from "../../componentes/funcoes-barras";
 import SerieSvg from "./serie-svg";
 import estilos from "./municipio.module.css";
 
@@ -88,12 +89,15 @@ export default async function PaginaMunicipio(
   if (!m) notFound();
 
   const uf = snapshot.ufs.find((u) => u.sigla === m.uf);
-  const vizinhos = municipios
-    .filter((x) => x.uf === m.uf && x.codigo !== m.codigo)
-    .sort((a, b) =>
-      (b.valores["populacao-censo-2022"] ?? 0) -
-      (a.valores["populacao-censo-2022"] ?? 0))
-    .slice(0, 12);
+  // **Vizinhos na ordem alfabética do estado, não os 12 maiores.** A versão
+  // anterior mandava toda página do Maranhão para os mesmos 12 municípios, e a
+  // medição de 03/09/2026 mostrou o resultado: 1.677 das 1.794 páginas (93%)
+  // sem nenhum link interno entrando, enquanto Salvador recebia 416. Uma janela
+  // que anda com o município espalha os links pelo estado inteiro.
+  const doEstado = municipios
+    .filter((x) => x.uf === m.uf)
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  const vizinhos = vizinhosDe(doEstado, m.codigo);
 
   // `?? null` porque o acesso indexado num Record pode devolver `undefined`
   // quando a coluna não existe no snapshot -- e `undefined` e `null` precisam
@@ -172,7 +176,8 @@ export default async function PaginaMunicipio(
       <nav className={estilos.trilha} aria-label="Você está em">
         <Link href="/">Números Públicos</Link>
         <span aria-hidden="true"> › </span>
-        <span>{uf?.nome ?? m.uf}</span>
+        {/* Era um `<span>`: a trilha prometia um nível que não existia. */}
+        <Link href={`/estado/${slugUf(m.uf)}/`}>{uf?.nome ?? m.uf}</Link>
         <span aria-hidden="true"> › </span>
         <span aria-current="page">{m.nome}</span>
       </nav>
@@ -442,8 +447,14 @@ export default async function PaginaMunicipio(
             ))}
           </ul>
           <p>
-            <Link href="/">Ver os {snapshot.municipios.length} municípios do
-            Nordeste</Link>
+            <Link href={`/estado/${slugUf(m.uf)}/`}>
+              Ver os {br(uf?.municipios ?? 0)} municípios de{" "}
+              {uf?.nome ?? m.uf}
+            </Link>{" "}
+            ·{" "}
+            <Link href="/">
+              os {br(snapshot.municipios.length)} do Nordeste
+            </Link>
           </p>
         </section>
       )}

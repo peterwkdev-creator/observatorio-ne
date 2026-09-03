@@ -1,6 +1,6 @@
-import { br, escala } from "../../../lib/dados";
-import type { FatiaFuncao } from "../../../lib/fiscal";
-import estilos from "./municipio.module.css";
+import { br, escala } from "../../lib/dados";
+import type { FatiaFuncao } from "../../lib/fiscal";
+import estilos from "./funcoes-barras.module.css";
 
 /**
  * Para onde vai o dinheiro do município, por função orçamentária.

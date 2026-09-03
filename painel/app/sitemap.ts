@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { expandir } from "../lib/dados";
+import { slugUf } from "../lib/estado";
 import { slugDe } from "../lib/fiscal";
 import { lerSnapshot, SITE } from "../lib/servidor";
 
@@ -34,6 +35,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Prioridade acima da do municipio: sao 9 paginas que concentram o link
+  // interno de 1.794. No grafo do site elas sao o unico caminho da home ate a
+  // maioria das paginas -- ver `lib/estado.ts`.
+  const estados: MetadataRoute.Sitemap = snapshot.ufs.map((u) => ({
+    url: `${SITE}/estado/${slugUf(u.sigla)}/`,
+    lastModified: atualizado,
+    changeFrequency: "weekly" as const,
+    priority: 0.9,
+  }));
+
   const municipios: MetadataRoute.Sitemap = expandir(snapshot).map((m) => ({
     url: `${SITE}/municipio/${slugDe(m.nome, m.uf)}/`,
     lastModified: atualizado,
@@ -41,5 +52,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...inicio, ...municipios];
+  return [...inicio, ...estados, ...municipios];
 }
