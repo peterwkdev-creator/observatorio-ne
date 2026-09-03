@@ -85,3 +85,51 @@ export function dataLegivel(iso: string | null | undefined): string {
     timeZone: "America/Sao_Paulo",
   });
 }
+
+/**
+ * Um valor em reais na grandeza em que uma pessoa fala dele.
+ *
+ * Existe porque o painel estava publicando **"R$ 62.981.326 mil"** para o PIB
+ * de Salvador. É fiel à unidade que o IBGE usa (*Mil Reais*) e hostil a quem
+ * lê: são oito dígitos que ainda precisam ser multiplicados por mil de cabeça.
+ * Ninguém faz essa conta — os olhos escorregam e o número não é lido.
+ *
+ * Devolve o texto curto **e o exato**, porque escalar é para ler, não para
+ * esconder: o valor cheio vai no `title` e no CSV, e continua conferível.
+ *
+ * O plural segue o uso jornalístico brasileiro, que concorda com a parte
+ * inteira: `R$ 1,5 bilhão`, `R$ 2,3 bilhões`.
+ */
+export function escala(reais: number | null | undefined): {
+  curto: string;
+  exato: string;
+} {
+  if (reais === null || reais === undefined) return { curto: "—", exato: "—" };
+  const exato = `R$ ${br(reais, 2)}`;
+  const abs = Math.abs(reais);
+
+  const nomear = (divisor: number, singular: string, plural: string) => {
+    const n = reais / divisor;
+    const casas = Math.abs(n) >= 100 ? 0 : 2;
+    const inteiro = Math.floor(Math.abs(n));
+    return `R$ ${br(n, casas)} ${inteiro >= 2 ? plural : singular}`;
+  };
+
+  // **Só milhão para cima.** Abaixo disso a escala PIORA a leitura: "R$ 28.168"
+  // é imediato e "R$ 28,17 mil" obriga a desfazer a conta. Escalar existe para
+  // encurtar dígito demais, não para encurtar por encurtar.
+  if (abs >= 1e9) return { curto: nomear(1e9, "bilhão", "bilhões"), exato };
+  if (abs >= 1e6) return { curto: nomear(1e6, "milhão", "milhões"), exato };
+  return { curto: `R$ ${br(reais, 0)}`, exato };
+}
+
+/**
+ * O PIB do IBGE vem em **Mil Reais**, não em reais.
+ *
+ * A unidade está no snapshot e é fácil de ignorar — e ignorá-la erra o valor
+ * por um fator de mil, em silêncio, num número que ninguém confere de cabeça.
+ * Esta função existe para que a conversão tenha um único lugar e um nome.
+ */
+export function milReaisParaReais(v: number | null | undefined): number | null {
+  return v === null || v === undefined ? null : v * 1000;
+}

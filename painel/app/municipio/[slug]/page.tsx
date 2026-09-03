@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { br, expandir } from "../../../lib/dados";
+import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import {
   indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
 } from "../../../lib/fiscal";
@@ -93,7 +93,8 @@ export default async function PaginaMunicipio(
   const pop = m.valores["populacao-censo-2022"] ?? null;
   const estimada = m.valores["populacao-estimada"] ?? null;
   // O PIB vem em MIL reais no agregado do IBGE; per capita em reais inteiros.
-  const perCapita = pib !== null && pop !== null && pop ? (pib * 1000) / pop : null;
+  const pibReais = milReaisParaReais(pib);
+  const perCapita = pibReais !== null && pop !== null && pop ? pibReais / pop : null;
 
   const f = m.fiscal;
   const quadrimestre = `${fiscal.periodo}º quadrimestre de ${fiscal.exercicio}`;
@@ -184,10 +185,18 @@ export default async function PaginaMunicipio(
 
         <article className={estilos.cartao}>
           <h2 className={estilos.rotulo}>PIB municipal</h2>
-          <p className={`${estilos.valor} tabular`}>
-            {pib === null ? "—" : `R$ ${br(pib, 0)} mil`}
+          <p className={`${estilos.valor} tabular`} title={escala(pibReais).exato}>
+            {escala(pibReais).curto}
           </p>
-          <p className={estilos.fonte}>A preços correntes · IBGE</p>
+          <p className={estilos.fonte}>
+            A preços correntes · IBGE
+            {pibReais !== null && (
+              <>
+                <br />
+                {escala(pibReais).exato}
+              </>
+            )}
+          </p>
         </article>
 
         <article className={estilos.cartao}>
@@ -230,8 +239,8 @@ export default async function PaginaMunicipio(
             preenchido errado.
             {(f.despesa ?? 0) > 0 && (f.rclAjustada ?? 0) > 0 && (
               <>
-                {" "}Em reais, o relatório traz R$ {br(f.despesa, 2)} de despesa
-                sobre R$ {br(f.rclAjustada, 2)} de receita.
+                {" "}Em reais, o relatório traz {escala(f.despesa).curto} de
+                despesa sobre {escala(f.rclAjustada).curto} de receita.
               </>
             )}
             <br />
@@ -257,8 +266,9 @@ export default async function PaginaMunicipio(
                 pareceria defeito do painel, e nao do relatorio. */}
             {(f.despesa ?? 0) > 0 && (f.rclAjustada ?? 0) > 0 ? (
               <>
-                {" "}Em reais: R$ {br(f.despesa, 2)} de despesa sobre R${" "}
-                {br(f.rclAjustada, 2)} de receita.
+                {" "}Em reais: <strong>{escala(f.despesa).curto}</strong> de
+                despesa sobre <strong>{escala(f.rclAjustada).curto}</strong> de
+                receita.
               </>
             ) : f.rclAjustada !== null && (f.rclAjustada ?? 0) <= 0 ? (
               <>

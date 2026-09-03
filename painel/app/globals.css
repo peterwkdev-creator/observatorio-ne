@@ -144,3 +144,22 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Quebra de linha, duas melhorias de suporte diferente.
+ *
+ * `balance` nos titulos: Baseline em todos os navegadores desde maio/2024.
+ * Evita titulo terminando com uma palavra sozinha na ultima linha -- comum
+ * aqui, porque nome de municipio varia de "Ico" a "Sao Jose de Ribamar".
+ *
+ * `pretty` nos paragrafos: Chrome e Safari sim, Firefox ainda nao. E melhoria
+ * progressiva -- onde nao ha suporte, a linha quebra como sempre quebrou.
+ * Nao vale condicional para isso.
+ */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+p, li {
+  text-wrap: pretty;
+}
