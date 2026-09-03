@@ -266,3 +266,23 @@
     color: #b9a5d6;
   }
 }
+
+.downloads {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--e-4);
+}
+
+.downloads li {
+  padding: var(--e-2) 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.downloads a {
+  font-weight: 600;
+  color: var(--acento);
+}
+
+.downloads .fonte {
+  display: inline;
+}

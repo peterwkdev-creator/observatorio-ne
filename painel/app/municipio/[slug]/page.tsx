@@ -119,6 +119,23 @@ export default async function PaginaMunicipio(
       name: `${m.nome}, ${m.uf}, Brasil`,
       identifier: String(m.codigo),
     },
+    // `distribution` e o campo que separa "pagina que fala de dados" de
+    // "dataset". Sem um arquivo baixavel apontado aqui, o schema.org/Dataset e
+    // uma alegacao sem lastro -- e o Google trata como tal.
+    distribution: [
+      {
+        "@type": "DataDownload",
+        encodingFormat: "text/csv",
+        contentUrl: `${SITE}/municipio/${m.slug}/dados.csv`,
+        name: `Dados de ${m.nome} (${m.uf}) em CSV`,
+      },
+      {
+        "@type": "DataDownload",
+        encodingFormat: "text/csv",
+        contentUrl: `${SITE}/dados/municipios.csv`,
+        name: "Base completa: 1.794 municípios do Nordeste",
+      },
+    ],
     isBasedOn: [
       { "@type": "Dataset", name: "IBGE — Agregados", url: "https://servicodados.ibge.gov.br" },
       { "@type": "Dataset", name: "SICONFI — Tesouro Nacional", url: "https://apidatalake.tesouro.gov.br" },
@@ -357,6 +374,39 @@ export default async function PaginaMunicipio(
           </p>
         </section>
       )}
+
+      <section className={estilos.texto}>
+        <h2>Baixar estes dados</h2>
+        <p>
+          Todo número desta página pode ser baixado e conferido. Um painel de
+          dado público que só deixa <em>olhar</em> está pela metade — número que
+          ninguém consegue baixar é número que ninguém consegue contestar.
+        </p>
+        <ul className={estilos.downloads}>
+          <li>
+            <a href={`/municipio/${m.slug}/dados.csv`} download>
+              {m.nome} em CSV
+            </a>{" "}
+            <span className={estilos.fonte}>
+              — só este município, uma linha por indicador e período
+            </span>
+          </li>
+          <li>
+            <a href="/dados/municipios.csv" download>
+              Base completa em CSV
+            </a>{" "}
+            <span className={estilos.fonte}>
+              — os {snapshot.municipios.length} municípios, uma linha cada
+            </span>
+          </li>
+        </ul>
+        <p className={estilos.ressalva}>
+          Separador <strong>ponto e vírgula</strong> e decimal com{" "}
+          <strong>vírgula</strong>, como o Excel em português espera. Municípios
+          que não entregaram o relatório aparecem como{" "}
+          <code>nao</code> na coluna de publicação — nunca como zero.
+        </p>
+      </section>
 
       <footer className={estilos.rodape}>
         <p>
