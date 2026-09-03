@@ -129,14 +129,20 @@ export default async function Pagina() {
           .
         </p>
         <p>
-          Código aberto em{" "}
+          <strong>Código aberto.</strong> Este painel é software livre sob a{" "}
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">
+            GNU AGPL v3 ou posterior
+          </a>
+          . O código-fonte completo, incluindo o motor de ingestão, está em{" "}
           <a
             href="https://github.com/peterwkdev-creator/observatorio-ne"
             rel="noopener"
           >
             github.com/peterwkdev-creator/observatorio-ne
           </a>
-          .
+          . Quem modificar e oferecer este serviço pela rede precisa
+          disponibilizar o código correspondente — é a seção 13 da AGPL, e é o
+          motivo de a licença ser esta e não a MIT.
         </p>
       </footer>
     </main>

@@ -16,7 +16,7 @@ version = "0.1.0"
 description = "Dados abertos dos 1.794 municípios do Nordeste, do IBGE, com procedência."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 authors = [{ name = "Peter Wilhelm Kretzschmar" }]
 keywords = ["open-data", "ibge", "brazil", "northeast", "municipalities"]
 

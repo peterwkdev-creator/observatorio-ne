@@ -122,6 +122,24 @@ states the trade-off, and the deciding one here is that *"the src layout
 requires installation of the project to be able to run its code, and the flat
 layout does not."* This project must run from a clean checkout with no install.
 
+## License: AGPL-3.0-or-later, deliberately
+
+Not MIT. This project can plausibly become a product: Brazilian municipalities
+buy exactly this kind of public data portal, on continuous contracts, and the
+three tender documents behind `ESPEC` price it at BRL 5,000–6,000 per month.
+
+MIT would let anyone take this code, **close it**, rebrand it and sell it to
+those same municipalities — including the incumbent vendors it would compete
+with. AGPL keeps it open and inspectable, which is the entire point of
+publishing it, while requiring anyone who offers it **as a service** to publish
+their modifications. That is the clause MIT lacks and a SaaS market needs.
+
+The copyright is held by one person, so dual licensing stays available:
+AGPL for everyone, a commercial licence for anyone who needs it closed.
+
+Note that this decision gets more expensive over time — relicensing later
+requires the consent of **every** contributor.
+
 ## Data sources
 
 All public, no registration, no token — `https://servicodados.ibge.gov.br`.
