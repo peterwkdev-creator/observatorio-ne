@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { br, dataLegivel, expandir } from "@/lib/dados";
 import { slugUf } from "@/lib/estado";
-import { lerSnapshot } from "@/lib/servidor";
+import { lerFiscal, lerSnapshot, SITE } from "@/lib/servidor";
 import { Municipios } from "./municipios";
 import s from "./page.module.css";
 
@@ -13,12 +13,82 @@ import s from "./page.module.css";
 export default async function Pagina() {
   const snapshot = await lerSnapshot();
   const municipios = expandir(snapshot);
+  const fiscal = await lerFiscal();
   const coletadoEm =
     snapshot.indicadores.map((i) => i.coletadoEm).filter(Boolean).sort().at(-1) ??
     snapshot.geradoEm;
 
+  // JSON-LD da capa. As páginas de município e de estado já declaravam
+  // `Dataset`; a capa, que é a raiz do site e a que o Google encontra primeiro,
+  // não declarava nada -- então o buscador via 1.804 conjuntos de dados sem um
+  // que os agrupasse. `hasPart` faz esse papel.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${SITE}/#site`,
+        name: "Números Públicos",
+        url: `${SITE}/`,
+        inLanguage: "pt-BR",
+        publisher: { "@id": `${SITE}/#autor` },
+      },
+      {
+        "@type": "Person",
+        "@id": `${SITE}/#autor`,
+        name: "Peter Wilhelm Kretzschmar",
+      },
+      {
+        "@type": "Dataset",
+        "@id": `${SITE}/#dados`,
+        name: "Dados abertos dos municípios do Nordeste",
+        description:
+          `População, PIB, despesa com pessoal, despesa por função e IDEB dos ` +
+          `${municipios.length} municípios dos nove estados do Nordeste, a ` +
+          `partir das APIs públicas do IBGE, do SICONFI/Tesouro Nacional e do ` +
+          `INEP, com a fonte e a data de coleta ao lado de cada número.`,
+        url: `${SITE}/`,
+        license: "https://www.gnu.org/licenses/agpl-3.0.html",
+        isAccessibleForFree: true,
+        inLanguage: "pt-BR",
+        creator: { "@id": `${SITE}/#autor` },
+        // A cobertura temporal e espacial são o que distingue este conjunto de
+        // qualquer outro que cite as mesmas fontes.
+        temporalCoverage: `${fiscal.exercicio}`,
+        spatialCoverage: {
+          "@type": "Place",
+          name: "Região Nordeste, Brasil",
+        },
+        variableMeasured: [
+          "População (Censo 2022)",
+          "PIB municipal a preços correntes",
+          "Despesa com pessoal sobre a receita corrente líquida ajustada",
+          "Despesa liquidada por função orçamentária",
+          "IDEB da rede municipal",
+        ],
+        distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat: "text/csv",
+            contentUrl: `${SITE}/dados/municipios.csv`,
+            name: `Base completa: ${municipios.length} municípios em CSV`,
+          },
+        ],
+        isBasedOn: [
+          { "@type": "Dataset", name: "IBGE — Agregados", url: "https://servicodados.ibge.gov.br" },
+          { "@type": "Dataset", name: "SICONFI — Tesouro Nacional", url: "https://apidatalake.tesouro.gov.br" },
+          { "@type": "Dataset", name: "INEP — IDEB", url: "https://www.gov.br/inep" },
+        ],
+      },
+    ],
+  };
+
   return (
     <main className={s.pagina} id="conteudo">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className={s.cabecalho}>
         <span className={s.selo}>Dados abertos · IBGE e Tesouro Nacional</span>
         <h1 className={s.titulo}>Números Públicos</h1>
@@ -120,7 +190,7 @@ export default async function Pagina() {
         </div>
       </section>
 
-      <Municipios municipios={municipios} indicadores={snapshot.indicadores} />
+      <Municipios linhas={snapshot.municipios} indicadores={snapshot.indicadores} />
 
       <footer className={s.rodape}>
         <p>

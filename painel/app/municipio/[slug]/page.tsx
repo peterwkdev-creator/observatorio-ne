@@ -44,17 +44,39 @@ export async function generateStaticParams() {
   return municipios.map((m) => ({ slug: m.slug }));
 }
 
+/**
+ * Monta a descrição dentro do limite útil, **descartando a cauda em vez de
+ * cortá-la**.
+ *
+ * ~155 caracteres é onde o Google trunca o trecho no resultado de busca. A
+ * primeira versão disto cortava no meio da palavra e terminava com reticências
+ * — "do Tesouro Nacional e do…" —, o que parece erro e desperdiça o pouco
+ * espaço que sobrava.
+ *
+ * Aqui a frase de procedência é **opcional**: entra se couber inteira, e some
+ * se não couber. Ela é a parte com menos valor de diferenciação (é idêntica em
+ * 1.794 páginas) e a que, portanto, deve ceder primeiro.
+ */
+function descricaoDe(principal: string, cauda: string, limite = 155): string {
+  const inteira = `${principal} ${cauda}`;
+  if (inteira.length <= limite) return inteira;
+  if (principal.length <= limite) return principal;
+  const corte = principal.lastIndexOf(" ", limite - 1);
+  return `${principal.slice(0, corte > 0 ? corte : limite - 1)}…`;
+}
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<Metadata> {
   const { slug } = await params;
-  const { municipios, fiscal } = await carregar();
+  const { municipios, fiscal, ideb } = await carregar();
   const m = municipios.find((x) => x.slug === slug);
   if (!m) return {};
 
   const pop = m.valores["populacao-censo-2022"] ?? null;
   const pessoal = m.fiscal?.percentual ?? null;
   const maiorFuncao = funcoesDe(fiscal, m.codigo)?.fatias[0] ?? null;
+  const ultimoIdeb = trajetoriaDe(ideb, m.codigo)?.ultimo.observado ?? null;
   // A descrição carrega os NÚMEROS, não adjetivos. É o que aparece no
   // resultado da busca, e número é o que faz alguém clicar num painel de dado.
   const partes = [
@@ -65,15 +87,23 @@ export async function generateMetadata(
     maiorFuncao && maiorFuncao.percentual !== null
       ? `${br(maiorFuncao.percentual, 1)}% do gasto em ${maiorFuncao.nome.toLowerCase()}`
       : null,
+    // "IDEB de <cidade>" é consulta com ciclo próprio, todo ano de divulgação.
+    ultimoIdeb !== null ? `IDEB ${br(ultimoIdeb, 1)}` : null,
   ].filter(Boolean);
+
+  // **A descrição cabe em ~155 caracteres, e o corte não é estético.** O Google
+  // trunca a partir daí, então tudo depois disso é peso sem efeito. E o que
+  // estava na cauda era a frase de procedência -- idêntica nas 1.794 páginas,
+  // ou seja, o pedaço com MENOS valor de diferenciação ocupando o espaço do
+  // que mais tem: os números deste município.
+  const descricao = descricaoDe(
+    `${m.nome} (${m.uf}): ${partes.join(", ")}.`,
+    "Dados oficiais do IBGE, do Tesouro Nacional e do INEP.",
+  );
 
   return {
     title: `${m.nome} (${m.uf}) — população, PIB e gasto com pessoal`,
-    description:
-      `Dados abertos de ${m.nome}/${m.uf}` +
-      (partes.length ? `: ${partes.join(", ")}` : "") +
-      `. Fonte: IBGE e SICONFI/Tesouro Nacional, com a data de coleta ao lado ` +
-      `de cada número.`,
+    description: descricao,
     alternates: { canonical: `${SITE}/municipio/${m.slug}/` },
     openGraph: {
       title: `${m.nome} (${m.uf}) — dados abertos`,
@@ -196,7 +226,12 @@ export default async function PaginaMunicipio(
       />
 
       <nav className={estilos.trilha} aria-label="Você está em">
-        <Link href="/">Números Públicos</Link>
+        {/* `prefetch={false}` no link da capa. Medido em 03/09/2026: o Next
+            pré-buscava o payload dela em TODA página — 269 KB, 32% do peso
+            total — porque a capa embute os municípios da tabela interativa.
+            Pré-busca é conveniência para quem navega dentro do site; quem chega
+            de uma busca abre uma página e sai, e paga o download por nada. */}
+        <Link href="/" prefetch={false}>Números Públicos</Link>
         <span aria-hidden="true"> › </span>
         {/* Era um `<span>`: a trilha prometia um nível que não existia. */}
         <Link href={`/estado/${slugUf(m.uf)}/`}>{uf?.nome ?? m.uf}</Link>
@@ -584,6 +619,10 @@ export default async function PaginaMunicipio(
             {iniciais.rotuloEtapa} — a que a prefeitura administra e financia.
           </p>
 
+          <h3 className={estilos.subtitulo}>
+            Nos {iniciais.rotuloEtapa}
+          </h3>
+
           <div className={estilos.grafico}>
             <IdebSvg trajetoria={iniciais} municipio={m.nome} />
           </div>
@@ -613,22 +652,10 @@ export default async function PaginaMunicipio(
             )}
           </p>
 
-          {finais && (
-            <p>
-              Nos <strong>{finais.rotuloEtapa}</strong>, a mesma rede saiu de{" "}
-              {br(finais.primeiro.observado, 1)} em {finais.primeiro.edicao}{" "}
-              para <strong>{br(finais.ultimo.observado, 1)}</strong> em{" "}
-              {finais.ultimo.edicao}. As duas etapas{" "}
-              <strong>não são comparáveis entre si</strong>: têm provas e
-              escalas próprias, e no Nordeste a mediana de 2023 é 5,2 nos anos
-              iniciais e 3,7 nos finais.
-            </p>
-          )}
-
           <div className={estilos.rolagem}>
             <table className={estilos.serie}>
-              <caption className="so-leitor">
-                IDEB da rede municipal de {m.nome}, {iniciais.rotuloEtapa}.
+              <caption className={estilos.legenda}>
+                IDEB da rede municipal de {m.nome}, {iniciais.rotuloEtapa}
               </caption>
               <thead>
                 <tr>
@@ -669,6 +696,63 @@ export default async function PaginaMunicipio(
             </table>
           </div>
 
+          {finais && (
+            <>
+              <h3 className={estilos.subtitulo}>
+                E nos {finais.rotuloEtapa}
+              </h3>
+              <p>
+                A mesma rede saiu de{" "}
+                <strong>{br(finais.primeiro.observado, 1)}</strong> em{" "}
+                {finais.primeiro.edicao} para{" "}
+                <strong>{br(finais.ultimo.observado, 1)}</strong> em{" "}
+                {finais.ultimo.edicao}
+                {finais.variacao !== 0 && (
+                  <>
+                    {" "}— {finais.variacao > 0 ? "alta" : "queda"} de{" "}
+                    {br(Math.abs(finais.variacao), 1)} ponto
+                    {Math.abs(finais.variacao) >= 2 ? "s" : ""}
+                  </>
+                )}
+                .{" "}
+                {contarMetas(finais).comMeta > 0 && (
+                  <>
+                    Bateu a meta em{" "}
+                    <strong>
+                      {contarMetas(finais).bateu} das{" "}
+                      {contarMetas(finais).comMeta}
+                    </strong>{" "}
+                    edições que tiveram meta.
+                  </>
+                )}
+              </p>
+
+              {/* Gráfico SEPARADO, e não uma segunda linha no gráfico de cima.
+                  As duas etapas têm provas e escalas próprias: no Nordeste a
+                  mediana de 2023 é 5,2 nos anos iniciais e 3,7 nos finais, e
+                  essa diferença é de instrumento, não de desempenho. Duas
+                  linhas no mesmo eixo convidariam exatamente a leitura errada
+                  -- "os anos finais são piores" --, que é a mesma classe do
+                  erro do Tesouro Selic: grandezas diferentes na mesma régua.
+
+                  O eixo fixo de 0 a 10 é o que permite comparar os dois
+                  gráficos com honestidade: cada um contra a sua própria meta,
+                  na mesma escala do índice. */}
+              <div className={estilos.grafico}>
+                <IdebSvg trajetoria={finais} municipio={m.nome} />
+              </div>
+
+              <p className={estilos.ressalva}>
+                As duas etapas <strong>não se comparam entre si</strong> — têm
+                provas e escalas próprias, e por isso aparecem em gráficos
+                separados. No Nordeste a mediana de 2023 é <strong>5,2</strong>{" "}
+                nos anos iniciais e <strong>3,7</strong> nos finais: a diferença
+                é do instrumento, não um veredito sobre os alunos mais velhos.
+              </p>
+            </>
+          )}
+
+
           {ideb.edicoesSemMeta.length > 0 && (
             <p className={estilos.ressalva}>
               <strong>Sem meta</strong> em {ideb.edicoesSemMeta.join(" e ")}{" "}
@@ -707,7 +791,7 @@ export default async function PaginaMunicipio(
               {uf?.nome ?? m.uf}
             </Link>{" "}
             ·{" "}
-            <Link href="/">
+            <Link href="/" prefetch={false}>
               os {br(snapshot.municipios.length)} do Nordeste
             </Link>
           </p>

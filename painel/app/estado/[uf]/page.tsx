@@ -53,14 +53,15 @@ export async function generateMetadata(
   const acima = r.porFaixa["acima-legal"];
   return {
     title: `${r.uf.nome} — dados abertos dos ${r.uf.municipios} municípios`,
+    // Ver a nota do recorte em `municipio/[slug]/page.tsx`: ~155 caracteres é
+    // onde o Google trunca, e a cauda era a mesma frase nas nove páginas.
     description:
-      `População, PIB, gasto com pessoal e despesa por função dos ` +
-      `${r.uf.municipios} municípios ${crase(r.uf.nome)}. ` +
-      (r.mediaPessoal !== null
-        ? `Média de ${br(r.mediaPessoal, 2)}% da receita comprometida com ` +
-          `pessoal, ${acima} acima do limite legal. `
-        : "") +
-      `Fonte: IBGE e SICONFI/Tesouro Nacional.`,
+      (`Os ${r.uf.municipios} municípios ${crase(r.uf.nome)}: ` +
+        (r.mediaPessoal !== null
+          ? `média de ${br(r.mediaPessoal, 2)}% da receita em pessoal, ` +
+            `${acima} acima do limite legal. `
+          : "") +
+        `Dados oficiais, com a fonte.`).slice(0, 155),
     alternates: { canonical: `${SITE}/estado/${slugUf(r.uf.sigla)}/` },
     openGraph: {
       title: `${r.uf.nome} — dados abertos`,
@@ -150,7 +151,7 @@ export default async function PaginaEstado(
       />
 
       <nav className={estilos.trilha} aria-label="Você está em">
-        <Link href="/">Números Públicos</Link>
+        <Link href="/" prefetch={false}>Números Públicos</Link>
         <span aria-hidden="true"> › </span>
         <span aria-current="page">{r.uf.nome}</span>
       </nav>

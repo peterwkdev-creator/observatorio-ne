@@ -3,11 +3,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Números Públicos — dados abertos dos municípios brasileiros",
+  // ~155 caracteres: o Google trunca a partir daí. O que sobrou é o que
+  // diferencia este site de qualquer outro que cite as mesmas fontes.
   description:
-    "População, PIB, gasto com pessoal e despesa por função dos 1.794 " +
-    "municípios dos nove estados do Nordeste, direto das APIs públicas do " +
-    "IBGE e do Tesouro Nacional, com a fonte e a data de coleta ao lado de " +
-    "cada número.",
+    "População, PIB, gasto com pessoal, despesa por função e IDEB dos 1.794 " +
+    "municípios do Nordeste — cada número com a sua fonte e data de coleta.",
   metadataBase: new URL("https://www.numerospublicos.com.br"),
   openGraph: {
     title: "Números Públicos",

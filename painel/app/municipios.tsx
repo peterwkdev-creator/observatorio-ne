@@ -1,7 +1,9 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState } from "react";
-import { br, type Indicador, type Municipio } from "@/lib/dados";
+import {
+  br, expandirLinhas, type Indicador, type LinhaMunicipio,
+} from "@/lib/dados";
 import s from "./page.module.css";
 import m from "./municipios.module.css";
 
@@ -11,8 +13,19 @@ import m from "./municipios.module.css";
  * Interatividade é a **única** razão de existir JavaScript aqui: buscar e
  * ordenar 1.794 linhas. Todo o resto da página é HTML gerado no build.
  *
- * Os 1.794 registros já vêm no payload da página, então filtrar é síncrono e
- * local — nenhuma requisição, nenhum estado de carregamento, nenhum spinner.
+ * Os registros já vêm no payload da página, então filtrar é síncrono e local —
+ * nenhuma requisição, nenhum estado de carregamento, nenhum spinner.
+ *
+ * ## Recebe as linhas CRUAS, não os objetos expandidos
+ *
+ * Medido em 03/09/2026: com objetos expandidos, o payload da capa era 269 KB,
+ * porque cada município repetia `codigo`, `nome`, `uf` e as três chaves de
+ * indicador, 1.794 vezes. E como toda página linkava para a capa, o Next
+ * pré-buscava esses 269 KB em todas elas.
+ *
+ * A expansão acontece uma vez aqui, no navegador, e custa milissegundos. O que
+ * ela economiza é banda de quem visita — e é o que torna a expansão nacional
+ * (5.570 municípios) viável em vez de proibitiva.
  */
 
 const PAGINA = 50;
@@ -20,12 +33,16 @@ const PAGINA = 50;
 type Ordem = { coluna: string; desc: boolean };
 
 export function Municipios({
-  municipios,
+  linhas,
   indicadores,
 }: {
-  municipios: Municipio[];
+  linhas: LinhaMunicipio[];
   indicadores: Indicador[];
 }) {
+  const municipios = useMemo(
+    () => expandirLinhas(linhas, indicadores.map((i) => i.codigo)),
+    [linhas, indicadores],
+  );
   const [busca, setBusca] = useState("");
   const [uf, setUf] = useState("");
   const [ordem, setOrdem] = useState<Ordem>({

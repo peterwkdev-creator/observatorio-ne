@@ -215,6 +215,17 @@ p, li {
   gap: var(--e-4);
 }
 
+/* Alvo de toque de 24px, o mínimo do WCAG 2.2 AA (2.5.8 Target Size).
+   A exceção do critério vale para link EM MEIO A UMA FRASE, onde aumentar a
+   área quebraria o texto — não para navegação isolada como esta, que a
+   auditoria de 03/09/2026 media com 17px de altura. */
+.barra-site a,
+.rodape-site a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+
 .rodape-site {
   max-width: var(--largura-max);
   margin: 0 auto;

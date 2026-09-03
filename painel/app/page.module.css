@@ -200,3 +200,14 @@
   margin-bottom: var(--e-8);
   max-width: 70ch;
 }
+
+/* Alvo de toque de 24px, o mínimo do WCAG 2.5.8 (AA). A exceção do critério
+   vale para link no meio de uma frase; estes são links isolados — o da fonte
+   fecha o cartão sozinho, e o do estado é o alvo principal da sua célula. */
+.cartaoFonte a,
+.tabela th a,
+.tabela td a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}

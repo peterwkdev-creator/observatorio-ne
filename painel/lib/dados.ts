@@ -56,8 +56,28 @@ export type Municipio = {
  * A expansão acontece **no build**, então o custo é zero para quem visita.
  */
 export function expandir(snapshot: Snapshot): Municipio[] {
-  const codigos = snapshot.indicadores.map((i) => i.codigo);
-  return snapshot.municipios.map(([codigo, nome, uf, ...valores]) => ({
+  return expandirLinhas(snapshot.municipios, snapshot.indicadores.map((i) => i.codigo));
+}
+
+/**
+ * A mesma expansão, a partir das linhas cruas.
+ *
+ * Existe para que o **componente de cliente** receba os arrays compactos e
+ * expanda no navegador, em vez de receber os objetos já expandidos.
+ *
+ * A diferença é medida, não estética: o payload da capa tinha **269 KB** com
+ * objetos expandidos, porque cada município repetia `codigo`, `nome`, `uf` e as
+ * três chaves de indicador — 1.794 vezes. E como toda página do site linkava
+ * para a capa, o Next pré-buscava esses 269 KB em **todas** elas.
+ *
+ * Com 5.570 municípios (o Brasil inteiro) seriam ~840 KB. É a diferença entre
+ * a expansão nacional ser possível e não ser.
+ */
+export function expandirLinhas(
+  linhas: LinhaMunicipio[],
+  codigos: string[],
+): Municipio[] {
+  return linhas.map(([codigo, nome, uf, ...valores]) => ({
     codigo,
     nome,
     uf,

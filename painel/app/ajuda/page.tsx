@@ -36,9 +36,8 @@ const TITULO = "Ajuda — como ler os números deste site";
 export const metadata: Metadata = {
   title: TITULO,
   description:
-    "O que significa cada número do Números Públicos: RCL ajustada, limite " +
-    "prudencial, despesa liquidada por função, por que às vezes aparece um " +
-    "travessão, de onde vêm os dados e como baixá-los.",
+    "O que significa cada número: RCL ajustada, limite prudencial, despesa " +
+    "liquidada, IDEB, e por que às vezes aparece um travessão.",
   alternates: { canonical: `${SITE}/ajuda/` },
   openGraph: {
     title: TITULO,
@@ -59,10 +58,37 @@ export default async function PaginaAjuda() {
   const quadrimestre = `${fiscal.periodo}º quadrimestre de ${fiscal.exercicio}`;
   const f = fiscal.funcoes;
 
+  // `WebPage`, e deliberadamente NÃO `FAQPage`.
+  //
+  // A página tem treze perguntas e responderia ao formato, mas o `FAQPage`
+  // exige repetir cada resposta como texto dentro do JSON-LD. Isso cria uma
+  // segunda cópia do conteúdo, que se afasta da visível no primeiro ajuste de
+  // redação — e dado estruturado que não bate com o que está na tela é
+  // exatamente o que o Google trata como sinal ruim. Somando: o próprio Google
+  // restringiu o resultado rico de FAQ a sites governamentais e de saúde em
+  // 2023, então a duplicação seria paga sem nada em troca.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: TITULO,
+    url: `${SITE}/ajuda/`,
+    inLanguage: "pt-BR",
+    isPartOf: { "@type": "WebSite", "@id": `${SITE}/#site` },
+    about: { "@type": "Dataset", "@id": `${SITE}/#dados` },
+    description:
+      "Glossário e perguntas frequentes sobre os números publicados: RCL " +
+      "ajustada, limites da Lei de Responsabilidade Fiscal, despesa " +
+      "liquidada por função, IDEB e as convenções de ausência de dado.",
+  };
+
   return (
     <main className={estilos.pagina} id="conteudo">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <nav className={estilos.trilha} aria-label="Você está em">
-        <Link href="/">Números Públicos</Link>
+        <Link href="/" prefetch={false}>Números Públicos</Link>
         <span aria-hidden="true"> › </span>
         <span aria-current="page">Ajuda</span>
       </nav>
@@ -316,7 +342,7 @@ export default async function PaginaAjuda() {
           O site cobre <strong>{br(total)} municípios</strong> — todos os do
           Nordeste segundo o IBGE. Se o seu não estiver, o mais provável é
           diferença de grafia na busca; tente pela{" "}
-          <Link href="/">lista completa</Link> ou pela página do estado.
+          <Link href="/" prefetch={false}>lista completa</Link> ou pela página do estado.
         </p>
         <p>
           Um caso é real e proposital: <strong>Fernando de Noronha</strong> tem

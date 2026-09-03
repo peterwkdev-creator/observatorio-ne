@@ -12,6 +12,11 @@
 
 .trilha a {
   color: var(--acento);
+  /* WCAG 2.5.8 (Target Size, AA): 24px de altura mínima. A exceção do critério
+     vale para link no meio de uma frase; trilha é navegação isolada. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .titulo {
@@ -339,4 +344,28 @@
   background: var(--acento-suave);
   color: var(--tinta-suave);
   white-space: nowrap;
+}
+
+/* Subtítulo de etapa dentro da seção de educação. `h3` de verdade, e não um
+   parágrafo em negrito: são duas subseções irmãs, e um leitor de tela que
+   navega por títulos precisa encontrá-las. */
+.subtitulo {
+  font-size: var(--texto-base);
+  font-weight: 600;
+  color: var(--tinta);
+  margin: var(--e-6) 0 var(--e-3);
+  letter-spacing: -0.005em;
+}
+
+/* Legenda de tabela visível. Uma `<caption>` escondida só para leitor de tela
+   resolve para quem usa leitor de tela e para mais ninguém -- e aqui a dúvida
+   ("esta tabela é de qual etapa?") é de todo mundo. */
+.legenda {
+  caption-side: top;
+  text-align: left;
+  font-size: var(--texto-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-fraca);
+  padding-bottom: var(--e-2);
 }

@@ -31,6 +31,15 @@ import estilos from "./termo.module.css";
  * desmonta a marcação de um jeito que ninguém previu.
  */
 
+/** Impressão curta e estável do texto, para compor um id único. */
+function impressao(texto: string): string {
+  let h = 5381;
+  for (let i = 0; i < texto.length; i += 1) {
+    h = ((h << 5) + h + texto.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
 export default function Termo({
   ancora,
   dica,
@@ -56,7 +65,19 @@ export default function Termo({
   bloco?: boolean;
   children: React.ReactNode;
 }) {
-  const id = `dica-${ancora}`;
+  // **O id sai do CONTEÚDO, não só da âncora.** Medido em 03/09/2026 numa
+  // auditoria do HTML gerado: a página de município usava `ancora="pessoal"`
+  // duas vezes — no cartão da RCL e no "limite prudencial" do texto — e as
+  // duas dicas nasciam com `id="dica-pessoal"`.
+  //
+  // Não é só HTML inválido: `aria-describedby` resolve para o **primeiro**
+  // elemento com aquele id, então o leitor de tela anunciava a explicação da
+  // RCL ao chegar no limite prudencial. Erro silencioso, e só para quem depende
+  // do leitor de tela — a classe de defeito mais fácil de nunca descobrir.
+  //
+  // Duas dicas com o mesmo texto compartilharem o id é inofensivo: o conteúdo
+  // é o mesmo, e é isso que o id promete.
+  const id = `dica-${ancora}-${impressao(dica)}`;
   return (
     <a
       className={`${estilos.termo} ${bloco ? estilos.emBloco : ""}`}

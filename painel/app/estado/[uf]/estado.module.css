@@ -12,6 +12,11 @@
 
 .trilha a {
   color: var(--acento);
+  /* WCAG 2.5.8 (Target Size, AA): 24px de altura mínima. A exceção do critério
+     vale para link no meio de uma frase; trilha é navegação isolada. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .titulo {
@@ -251,6 +256,15 @@
 
 .lista tbody th {
   font-weight: 500;
+}
+
+/* O link do município é o alvo principal desta tabela -- ela existe para levar
+   a ele. WCAG 2.5.8 pede 24px e a auditoria media 17. A exceção do critério
+   vale para link no meio de uma frase; aqui cada um está sozinho na célula. */
+.lista tbody th a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .lista .num {

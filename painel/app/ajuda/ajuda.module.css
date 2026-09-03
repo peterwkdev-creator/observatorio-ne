@@ -12,6 +12,10 @@
 
 .trilha a {
   color: var(--tinta-suave);
+  /* WCAG 2.5.8: a trilha é navegação, não texto corrido. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .titulo {
@@ -58,6 +62,11 @@
 
 .sumario a {
   font-size: var(--texto-base);
+  /* Ver a nota do WCAG 2.5.8 em `globals.css`: o sumário é navegação isolada,
+     não link no meio de uma frase, então a exceção do critério não vale. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .bloco {
