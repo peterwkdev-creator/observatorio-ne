@@ -8,8 +8,10 @@ import {
   compararFuncoes, DESLOCAMENTO_MINIMO, FUNCOES_DA_PORTARIA, funcoesDe,
   indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
 } from "../../../lib/fiscal";
-import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
+import { contarMetas, trajetoriaDe } from "../../../lib/ideb";
+import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import FuncoesBarras from "../../componentes/funcoes-barras";
+import IdebSvg from "../../componentes/ideb-svg";
 import SerieSvg from "./serie-svg";
 import estilos from "./municipio.module.css";
 
@@ -24,14 +26,16 @@ import estilos from "./municipio.module.css";
  */
 
 async function carregar() {
-  const [snapshot, fiscal] = await Promise.all([lerSnapshot(), lerFiscal()]);
+  const [snapshot, fiscal, ideb, idebFinais] = await Promise.all([
+    lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"), lerIdeb("anos_finais"),
+  ]);
   const porCodigo = indexarFiscal(fiscal);
   const municipios = expandir(snapshot).map((m) => ({
     ...m,
     slug: slugDe(m.nome, m.uf),
     fiscal: porCodigo.get(m.codigo) ?? null,
   }));
-  return { snapshot, fiscal, municipios };
+  return { snapshot, fiscal, ideb, idebFinais, municipios };
 }
 
 export async function generateStaticParams() {
@@ -84,7 +88,7 @@ export default async function PaginaMunicipio(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const { snapshot, fiscal, municipios } = await carregar();
+  const { snapshot, fiscal, ideb, idebFinais, municipios } = await carregar();
   const m = municipios.find((x) => x.slug === slug);
   if (!m) notFound();
 
@@ -122,6 +126,15 @@ export default async function PaginaMunicipio(
     ? `${fiscal.funcoes.periodo}º bimestre de ${fiscal.funcoes.exercicio}`
     : "";
   const maior = funcoes?.fatias[0] ?? null;
+
+  // As duas etapas ficam SEPARADAS de propósito. Anos iniciais e anos finais
+  // têm escalas diferentes -- a mediana do Nordeste em 2023 é 5,2 numa e 3,7
+  // na outra -- e juntá-las num número só repetiria o erro do Tesouro Selic.
+  const iniciais = trajetoriaDe(ideb, m.codigo);
+  const finais = trajetoriaDe(idebFinais, m.codigo);
+  // A fatia da educação, para a justaposição. NÃO é uma explicação da nota:
+  // são dois fatos que ninguém publica lado a lado, e é o leitor quem pensa.
+  const educacao = funcoes?.fatias.find((f) => f.nome === "Educação") ?? null;
 
   // A mudança de composição entre o mesmo bimestre de dois anos. `null` quando
   // falta um dos anos ou quando o crescimento do total sai da faixa comparável
@@ -499,6 +512,134 @@ export default async function PaginaMunicipio(
             valores são <strong>nominais</strong>: parte do crescimento é
             inflação, e este painel não deflaciona nada.{" "}
             <Link href="/ajuda/#comparacao">Por quê?</Link>
+          </p>
+        </section>
+      )}
+
+      {iniciais && (
+        <section className={estilos.texto}>
+          <h2>Educação: o que o dinheiro encontrou pela frente</h2>
+          <p>
+            {educacao && educacao.percentual !== null ? (
+              <>
+                {m.nome} destinou{" "}
+                <strong>{br(educacao.percentual, 1)}%</strong> do orçamento à
+                educação no {bimestre}. O IDEB mede o outro lado da mesma
+                conta: aprendizado e fluxo escolar, numa escala de 0 a 10.
+              </>
+            ) : (
+              <>
+                O IDEB mede aprendizado e fluxo escolar numa escala de 0 a 10,
+                por rede e por etapa.
+              </>
+            )}{" "}
+            Abaixo, a <strong>rede municipal</strong> nos{" "}
+            {iniciais.rotuloEtapa} — a que a prefeitura administra e financia.
+          </p>
+
+          <div className={estilos.grafico}>
+            <IdebSvg trajetoria={iniciais} municipio={m.nome} />
+          </div>
+
+          <p>
+            De <strong>{br(iniciais.primeiro.observado, 1)}</strong> em{" "}
+            {iniciais.primeiro.edicao} para{" "}
+            <strong>{br(iniciais.ultimo.observado, 1)}</strong> em{" "}
+            {iniciais.ultimo.edicao}
+            {iniciais.variacao !== 0 && (
+              <>
+                {" "}— {iniciais.variacao > 0 ? "alta" : "queda"} de{" "}
+                {br(Math.abs(iniciais.variacao), 1)} ponto
+                {Math.abs(iniciais.variacao) >= 2 ? "s" : ""}
+              </>
+            )}
+            .{" "}
+            {contarMetas(iniciais).comMeta > 0 && (
+              <>
+                O município bateu a meta do INEP em{" "}
+                <strong>
+                  {contarMetas(iniciais).bateu} das{" "}
+                  {contarMetas(iniciais).comMeta}
+                </strong>{" "}
+                edições que tiveram meta.
+              </>
+            )}
+          </p>
+
+          {finais && (
+            <p>
+              Nos <strong>{finais.rotuloEtapa}</strong>, a mesma rede saiu de{" "}
+              {br(finais.primeiro.observado, 1)} em {finais.primeiro.edicao}{" "}
+              para <strong>{br(finais.ultimo.observado, 1)}</strong> em{" "}
+              {finais.ultimo.edicao}. As duas etapas{" "}
+              <strong>não são comparáveis entre si</strong>: têm provas e
+              escalas próprias, e no Nordeste a mediana de 2023 é 5,2 nos anos
+              iniciais e 3,7 nos finais.
+            </p>
+          )}
+
+          <div className={estilos.rolagem}>
+            <table className={estilos.serie}>
+              <caption className="so-leitor">
+                IDEB da rede municipal de {m.nome}, {iniciais.rotuloEtapa}.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Edição</th>
+                  <th scope="col" className={estilos.num}>IDEB</th>
+                  <th scope="col" className={estilos.num}>Meta</th>
+                  <th scope="col">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {iniciais.pontos.map((p) => (
+                  <tr key={p.edicao}>
+                    <th scope="row">{p.edicao}</th>
+                    <td className={`${estilos.num} tabular`}>
+                      {br(p.observado, 1)}
+                    </td>
+                    <td className={`${estilos.num} tabular`}>
+                      {p.projecao === null ? "—" : br(p.projecao, 1)}
+                    </td>
+                    <td>
+                      {p.bateuMeta === null
+                        ? "sem meta"
+                        : p.bateuMeta
+                          ? "atingiu a meta"
+                          : "abaixo da meta"}
+                      {p.ressalva && (
+                        <>
+                          {" "}
+                          <span className={estilos.marca} title={p.ressalva}>
+                            com ressalva do INEP
+                          </span>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {ideb.edicoesSemMeta.length > 0 && (
+            <p className={estilos.ressalva}>
+              <strong>Sem meta</strong> em {ideb.edicoesSemMeta.join(" e ")}{" "}
+              porque o INEP não publicou uma: 2005 é a linha de base, e o
+              primeiro ciclo do IDEB encerrou em 2021, com as novas metas ainda
+              em definição (Portaria MEC 26/2024). Travessão aqui é ausência de
+              alvo, não alvo não atingido.
+            </p>
+          )}
+
+          <p className={estilos.ressalva}>
+            Gasto e nota estão lado a lado porque{" "}
+            <strong>nenhuma das duas fontes os publica juntos</strong> — não
+            porque um explique o outro. Quanto um município gasta e o que os
+            seus alunos aprendem dependem de muita coisa que não está nesta
+            página. Fonte: {ideb.fonte}
+            {ideb.coletadoEm ? `, coletado em ${ideb.coletadoEm.slice(0, 10)}` : ""}.{" "}
+            <Link href="/ajuda/#ideb">O que é o IDEB?</Link>
           </p>
         </section>
       )}

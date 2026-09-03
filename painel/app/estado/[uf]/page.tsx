@@ -6,7 +6,8 @@ import FuncoesBarras from "../../componentes/funcoes-barras";
 import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { resumirEstado, slugUf } from "../../../lib/estado";
 import { ROTULO_FAIXA } from "../../../lib/fiscal";
-import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
+import { medianaUltimaEdicao } from "../../../lib/ideb";
+import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import estilos from "./estado.module.css";
 
 /**
@@ -29,8 +30,10 @@ import estilos from "./estado.module.css";
  */
 
 async function carregar() {
-  const [snapshot, fiscal] = await Promise.all([lerSnapshot(), lerFiscal()]);
-  return { snapshot, fiscal, expandidos: expandir(snapshot) };
+  const [snapshot, fiscal, ideb] = await Promise.all([
+    lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"),
+  ]);
+  return { snapshot, fiscal, ideb, expandidos: expandir(snapshot) };
 }
 
 export async function generateStaticParams() {
@@ -95,9 +98,13 @@ export default async function PaginaEstado(
   { params }: { params: Promise<{ uf: string }> },
 ) {
   const { uf } = await params;
-  const { snapshot, fiscal, expandidos } = await carregar();
+  const { snapshot, fiscal, ideb, expandidos } = await carregar();
   const r = resumirEstado(snapshot, fiscal, expandidos, uf.toUpperCase());
   if (!r) notFound();
+
+  // Mediana e não média: o IDEB vai de 0 a 10, e um punhado de municípios
+  // pequenos com nota extrema desloca a média sem descrever o estado.
+  const medIdeb = medianaUltimaEdicao(ideb, r.municipios.map((m) => m.codigo));
 
   const de = CONTRACAO[r.uf.sigla] ?? `de ${r.uf.nome}`;
   const pop = r.uf.totais["populacao-censo-2022"] ?? null;
@@ -182,6 +189,20 @@ export default async function PaginaEstado(
             média de {br(r.baseMedia)} municípios · {quadrimestre} · SICONFI
           </p>
         </article>
+
+        {medIdeb && (
+          <article className={estilos.cartao}>
+            <h2 className={estilos.rotulo}>IDEB mediano</h2>
+            <p className={`${estilos.valor} tabular`}>
+              {br(medIdeb.mediana, 1)}
+            </p>
+            <p className={estilos.fonte}>
+              rede municipal, anos iniciais · {medIdeb.edicao} · INEP
+              <br />
+              mediana de {br(medIdeb.base)} municípios, escala de 0 a 10
+            </p>
+          </article>
+        )}
 
         <article className={`${estilos.cartao} ${estilos.destaque}`}>
           <h2 className={estilos.rotulo}>Acima do limite legal</h2>

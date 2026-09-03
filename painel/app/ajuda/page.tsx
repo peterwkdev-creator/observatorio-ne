@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { br, expandir } from "../../lib/dados";
 import { FUNCOES_DA_PORTARIA, LIMITE_PLAUSIVEL } from "../../lib/fiscal";
-import { lerFiscal, lerSnapshot, SITE } from "../../lib/servidor";
+import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../lib/servidor";
 import estilos from "./ajuda.module.css";
 
 /**
@@ -50,7 +50,9 @@ export const metadata: Metadata = {
 };
 
 export default async function PaginaAjuda() {
-  const [snapshot, fiscal] = await Promise.all([lerSnapshot(), lerFiscal()]);
+  const [snapshot, fiscal, ideb] = await Promise.all([
+    lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"),
+  ]);
   const total = expandir(snapshot).length;
   const c = fiscal.cobertura;
   const naoPublicaram = c.consultados - c.publicaram;
@@ -83,6 +85,7 @@ export default async function PaginaAjuda() {
           <li><a href="#implausivel">O que quer dizer “valor implausível”</a></li>
           <li><a href="#funcao">Despesa por função, e o que é “liquidada”</a></li>
           <li><a href="#comparacao">Por que a comparação é entre anos</a></li>
+          <li><a href="#ideb">O que é o IDEB, e por que só a rede municipal</a></li>
           <li><a href="#inflacao">Os valores estão corrigidos pela inflação?</a></li>
           <li><a href="#quando">De quando são os dados</a></li>
           <li><a href="#faltando">Meu município não aparece</a></li>
@@ -215,6 +218,54 @@ export default async function PaginaAjuda() {
           <strong>1 ponto percentual ou mais</strong>. Abaixo disso ela diz que
           ficou praticamente igual — descrever movimento de meio ponto como
           tendência seria vender ruído como descoberta.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="ideb">
+        <h2>O que é o IDEB, e por que só a rede municipal</h2>
+        <p>
+          O <strong>IDEB</strong> é o índice do INEP que combina duas coisas:
+          quanto os alunos aprenderam (a prova do SAEB) e quantos avançaram de
+          ano sem reprovar ou abandonar. Vai de <strong>0 a 10</strong>, e essa
+          escala é a mesma em todo município do país — por isso os gráficos
+          deste site usam eixo fixo, e duas páginas podem ser comparadas
+          diretamente.
+        </p>
+        <p>
+          Este site publica a <strong>rede municipal</strong>, e não a rede
+          &ldquo;pública&rdquo;. A diferença importa: a rede pública inclui as
+          escolas <em>estaduais</em>, que a prefeitura não administra nem
+          financia. Como a página mostra ao lado quanto do orçamento{" "}
+          <em>municipal</em> foi para educação, usar o índice da rede pública
+          creditaria à prefeitura um resultado que não é dela.
+        </p>
+        <p>
+          As <strong>etapas são separadas e não se comparam entre si</strong>.
+          Anos iniciais (1º ao 5º) e anos finais (6º ao 9º) têm provas e
+          escalas próprias: no Nordeste, a mediana de 2023 é 5,2 numa e 3,7 na
+          outra. Um número não é &ldquo;pior&rdquo; que o outro; eles medem
+          coisas diferentes.
+        </p>
+        <p>
+          <strong>2005 e {ideb.edicoes[ideb.edicoes.length - 1]} não têm
+          meta</strong>, e travessão ali é ausência de alvo, não alvo não
+          atingido. 2005 é a linha de base do índice; e o primeiro ciclo do
+          IDEB encerrou em 2021, com as novas metas ainda em definição
+          (Portaria MEC 26/2024).
+        </p>
+        <p>
+          Algumas edições aparecem marcadas como{" "}
+          <strong>&ldquo;com ressalva do INEP&rdquo;</strong>. É o próprio INEP
+          avisando que aquela média foi calculada em condição atípica — por
+          exemplo, com participação inferior a 50% na prova, ou a partir de
+          avaliações estaduais por extravio das provas. O número é publicado
+          como veio, com o aviso junto.
+        </p>
+        <p>
+          Cobertura: <strong>{ideb.cobertura.municipios}</strong> municípios do
+          Nordeste têm rede municipal nos anos iniciais. O que falta para os{" "}
+          {snapshot.municipios.length} do IBGE é Fernando de Noronha — ver{" "}
+          <a href="#faltando">meu município não aparece</a>.
         </p>
       </section>
 

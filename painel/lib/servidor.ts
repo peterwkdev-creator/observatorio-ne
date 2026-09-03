@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { Snapshot } from "./dados";
 import type { SnapshotFiscal } from "./fiscal";
+import type { SnapshotIdeb } from "./ideb";
 
 /**
  * Leitura do snapshot gerado pelo motor Python. **Só no servidor.**
@@ -36,6 +37,25 @@ export async function lerFiscal(): Promise<SnapshotFiscal> {
   const arquivo = path.join(process.cwd(), "dados", "fiscal.json");
   cacheFiscal = JSON.parse(await readFile(arquivo, "utf-8")) as SnapshotFiscal;
   return cacheFiscal;
+}
+
+/**
+ * O IDEB, entregue pelo motor do `sys-educacao-inep`. Duas etapas, dois
+ * arquivos — e eles NÃO devem ser fundidos num só: anos iniciais e anos finais
+ * têm escalas diferentes, e juntá-los num objeto convidaria a somá-los.
+ */
+const cacheIdeb: Record<string, SnapshotIdeb> = {};
+
+export async function lerIdeb(
+  etapa: "anos_iniciais" | "anos_finais" = "anos_iniciais",
+): Promise<SnapshotIdeb> {
+  const existente = cacheIdeb[etapa];
+  if (existente) return existente;
+  const nome = etapa === "anos_iniciais" ? "ideb.json" : "ideb-finais.json";
+  const arquivo = path.join(process.cwd(), "dados", nome);
+  const lido = JSON.parse(await readFile(arquivo, "utf-8")) as SnapshotIdeb;
+  cacheIdeb[etapa] = lido;
+  return lido;
 }
 
 /**

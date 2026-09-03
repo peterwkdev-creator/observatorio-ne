@@ -1,7 +1,8 @@
 import { expandir } from "../../../../lib/dados";
 import { cabecalhosCsv, paraCsv } from "../../../../lib/csv";
 import { funcoesDe, slugDe } from "../../../../lib/fiscal";
-import { lerFiscal, lerSnapshot } from "../../../../lib/servidor";
+import { trajetoriaDe } from "../../../../lib/ideb";
+import { lerFiscal, lerIdeb, lerSnapshot } from "../../../../lib/servidor";
 
 /**
  * O dado de um município em CSV, para quem quiser conferir ou reusar.
@@ -26,7 +27,9 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const [snapshot, fiscal] = await Promise.all([lerSnapshot(), lerFiscal()]);
+  const [snapshot, fiscal, ideb, idebFinais] = await Promise.all([
+    lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"), lerIdeb("anos_finais"),
+  ]);
   const m = expandir(snapshot).find((x) => slugDe(x.nome, x.uf) === slug);
   if (!m) return new Response("não encontrado", { status: 404 });
 
@@ -84,6 +87,23 @@ export async function GET(
     if (totalAntes !== null) {
       linhas.push([...comum, "Despesa liquidada — total declarado",
         periodoAntes, totalAntes, "R$", "SICONFI", antes.coletadoEm ?? ""]);
+    }
+  }
+
+  // O IDEB entra como linhas, uma por edição e etapa. As duas etapas ficam em
+  // indicadores DIFERENTES: têm escalas próprias, e uma coluna só convidaria
+  // quem baixou a compará-las.
+  for (const [snap, etapa] of [[ideb, "anos iniciais"], [idebFinais, "anos finais"]] as const) {
+    const t = trajetoriaDe(snap, m.codigo);
+    for (const ponto of t?.pontos ?? []) {
+      linhas.push([...comum, `IDEB rede municipal — ${etapa}`,
+        String(ponto.edicao), ponto.observado, "índice 0 a 10", "INEP",
+        snap.coletadoEm ?? ""]);
+      if (ponto.projecao !== null) {
+        linhas.push([...comum, `Meta do IDEB — ${etapa}`,
+          String(ponto.edicao), ponto.projecao, "índice 0 a 10", "INEP",
+          snap.coletadoEm ?? ""]);
+      }
     }
   }
 
