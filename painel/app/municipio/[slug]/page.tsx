@@ -7,6 +7,7 @@ import {
   indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
 } from "../../../lib/fiscal";
 import { lerFiscal, lerSnapshot, SITE } from "../../../lib/servidor";
+import SerieSvg from "./serie-svg";
 import estilos from "./municipio.module.css";
 
 /**
@@ -329,6 +330,15 @@ export default async function PaginaMunicipio(
             )}{" "}
             Cada linha abaixo é um relatório entregue por {m.nome} ao SICONFI.
           </p>
+          <div className={estilos.grafico}>
+            <SerieSvg
+              pontos={serie}
+              prudencial={f?.limitePrudencial ?? fiscal.limites.prudencial}
+              legal={fiscal.limites.legal}
+              municipio={m.nome}
+            />
+          </div>
+
           <div className={estilos.rolagem}>
             <table className={estilos.serie}>
               <thead>

@@ -286,3 +286,12 @@
 .downloads .fonte {
   display: inline;
 }
+
+/* O grafico e complemento da tabela, nao substituto: mesma largura de leitura,
+   sem moldura que o transforme no elemento principal da secao. */
+.grafico {
+  max-width: 34rem;
+  margin: 0 0 var(--e-6);
+  padding: var(--e-3) 0;
+  border-bottom: 1px solid var(--borda);
+}
