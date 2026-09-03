@@ -329,7 +329,8 @@ export default async function PaginaMunicipio(
           O percentual <strong>não é recalculado aqui</strong>: ele vem
           calculado e declarado pelo próprio município. Este painel não
           interpreta, não acusa e não declara ninguém em descumprimento —
-          mostra o número publicado ao lado do limite legal.
+          mostra o número publicado ao lado do limite legal.{" "}
+          <Link href="/ajuda/#pessoal">O que é RCL ajustada?</Link>
         </p>
       </section>
 
@@ -404,7 +405,8 @@ export default async function PaginaMunicipio(
           <p className={estilos.ressalva}>
             Quadrimestre sem linha é quadrimestre em que o município{" "}
             <strong>não entregou</strong> o relatório — não zero, e não
-            estabilidade.
+            estabilidade.{" "}
+            <Link href="/ajuda/#travessao">Por que aparece “—”?</Link>
           </p>
         </section>
       )}
@@ -439,7 +441,8 @@ export default async function PaginaMunicipio(
             declarou gasto em <strong>{funcoes.fatias.length}</strong> das{" "}
             {FUNCOES_DA_PORTARIA} funções previstas na Portaria MOG 42/1999, e a
             soma delas fecha com o total que o próprio município declarou.
-            Fonte: {fiscal.funcoes?.fonte}.
+            Fonte: {fiscal.funcoes?.fonte}.{" "}
+            <Link href="/ajuda/#funcao">O que é despesa liquidada?</Link>
           </p>
         </section>
       )}
@@ -494,7 +497,8 @@ export default async function PaginaMunicipio(
             e não entre bimestres do mesmo ano — o RREO é acumulado, então o 6º
             bimestre já contém o 4º e comparar os dois mediria quase nada. Os
             valores são <strong>nominais</strong>: parte do crescimento é
-            inflação, e este painel não deflaciona nada.
+            inflação, e este painel não deflaciona nada.{" "}
+            <Link href="/ajuda/#comparacao">Por quê?</Link>
           </p>
         </section>
       )}

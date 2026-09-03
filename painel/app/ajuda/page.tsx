@@ -1,0 +1,421 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { br, expandir } from "../../lib/dados";
+import { FUNCOES_DA_PORTARIA, LIMITE_PLAUSIVEL } from "../../lib/fiscal";
+import { lerFiscal, lerSnapshot, SITE } from "../../lib/servidor";
+import estilos from "./ajuda.module.css";
+
+/**
+ * A página de ajuda — o que fazer quando o número não se explica sozinho.
+ *
+ * Um painel de dado público falha de um jeito específico: o número está certo,
+ * a fonte está citada, e o leitor mesmo assim não sabe o que está vendo. "RCL
+ * ajustada", "despesa liquidada", "limite prudencial" e um travessão no lugar
+ * de um valor são todos opacos para quem não trabalha com contabilidade
+ * pública — que é praticamente todo mundo que chega aqui por uma busca.
+ *
+ * ## Três decisões de desenho
+ *
+ * **As perguntas são as reais, não as convenientes.** "Por que aparece um
+ * travessão" e "achei um número errado" são as duas que mais aparecem em
+ * qualquer painel de dado, e as duas que mais tentam ser evitadas.
+ *
+ * **Cada resposta diz TAMBÉM onde a resposta não está aqui.** Metade das
+ * dúvidas de um site assim não é sobre o site: é sobre o que o município
+ * declarou, e isso só a prefeitura e o SICONFI respondem. Mandar a pessoa para
+ * o lugar certo é mais útil que uma resposta educada e inútil.
+ *
+ * **Os números da página são calculados, não escritos à mão.** Uma ajuda que
+ * diz "1.794 municípios" em texto fixo vira mentira na próxima coleta, e
+ * ninguém revisa a página de ajuda.
+ */
+
+const TITULO = "Ajuda — como ler os números deste site";
+
+export const metadata: Metadata = {
+  title: TITULO,
+  description:
+    "O que significa cada número do Números Públicos: RCL ajustada, limite " +
+    "prudencial, despesa liquidada por função, por que às vezes aparece um " +
+    "travessão, de onde vêm os dados e como baixá-los.",
+  alternates: { canonical: `${SITE}/ajuda/` },
+  openGraph: {
+    title: TITULO,
+    description: "Como ler os números, de onde eles vêm e o que fazer com eles.",
+    url: `${SITE}/ajuda/`,
+    locale: "pt_BR",
+    type: "article",
+  },
+};
+
+export default async function PaginaAjuda() {
+  const [snapshot, fiscal] = await Promise.all([lerSnapshot(), lerFiscal()]);
+  const total = expandir(snapshot).length;
+  const c = fiscal.cobertura;
+  const naoPublicaram = c.consultados - c.publicaram;
+  const quadrimestre = `${fiscal.periodo}º quadrimestre de ${fiscal.exercicio}`;
+  const f = fiscal.funcoes;
+
+  return (
+    <main className={estilos.pagina} id="conteudo">
+      <nav className={estilos.trilha} aria-label="Você está em">
+        <Link href="/">Números Públicos</Link>
+        <span aria-hidden="true"> › </span>
+        <span aria-current="page">Ajuda</span>
+      </nav>
+
+      <header>
+        <h1 className={estilos.titulo}>Ajuda</h1>
+        <p className={estilos.chamada}>
+          Este site publica números que os próprios municípios e o IBGE
+          declararam. Alguns deles têm nomes técnicos que não se explicam
+          sozinhos. Abaixo está o que cada um significa — e, quando a resposta
+          não estiver aqui, para onde ir.
+        </p>
+      </header>
+
+      <nav className={estilos.sumario} aria-label="Nesta página">
+        <h2>Nesta página</h2>
+        <ul>
+          <li><a href="#travessao">Por que aparece “—” no lugar de um número</a></li>
+          <li><a href="#pessoal">Despesa com pessoal, RCL e os dois limites</a></li>
+          <li><a href="#implausivel">O que quer dizer “valor implausível”</a></li>
+          <li><a href="#funcao">Despesa por função, e o que é “liquidada”</a></li>
+          <li><a href="#comparacao">Por que a comparação é entre anos</a></li>
+          <li><a href="#inflacao">Os valores estão corrigidos pela inflação?</a></li>
+          <li><a href="#quando">De quando são os dados</a></li>
+          <li><a href="#faltando">Meu município não aparece</a></li>
+          <li><a href="#nordeste">Por que só o Nordeste</a></li>
+          <li><a href="#baixar">Como baixar e abrir os dados</a></li>
+          <li><a href="#licenca">Posso usar estes dados?</a></li>
+          <li><a href="#erro">Achei um número errado</a></li>
+          <li><a href="#outras">Onde perguntar o que este site não responde</a></li>
+        </ul>
+      </nav>
+
+      <section className={estilos.bloco} id="travessao">
+        <h2>Por que aparece “—” no lugar de um número</h2>
+        <p>
+          Porque o dado <strong>não existe</strong> na fonte — e isso é
+          diferente de ser zero.
+        </p>
+        <p>
+          No {quadrimestre}, <strong>{br(naoPublicaram)}</strong> dos{" "}
+          {br(c.consultados)} municípios consultados não entregaram o Relatório
+          de Gestão Fiscal ao SICONFI. Isso não significa que gastem zero com
+          pessoal: significa que ninguém sabe quanto gastam, porque o relatório
+          não foi publicado.
+        </p>
+        <p>
+          Escrever “0” ali seria inventar um número, e é assim que um painel
+          passa a mentir sem que ninguém perceba. O travessão é a recusa a
+          fazer isso.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="pessoal">
+        <h2>Despesa com pessoal, RCL e os dois limites</h2>
+        <p>
+          <strong>Receita corrente líquida (RCL)</strong> é o que sobra da
+          arrecadação do município depois de descontar transferências que ele é
+          obrigado a repassar. A <strong>RCL ajustada</strong> é essa mesma
+          conta com os ajustes que a Lei de Responsabilidade Fiscal manda fazer
+          — e é ela, não a bruta, o denominador do percentual publicado.
+        </p>
+        <p>
+          O percentual que este site mostra é{" "}
+          <strong>despesa com pessoal ÷ RCL ajustada</strong>. A Lei de
+          Responsabilidade Fiscal fixa dois patamares para o Executivo
+          municipal:
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <strong>{br(fiscal.limites.prudencial, 2)}% — limite prudencial.</strong>{" "}
+            Passar dele já proíbe criar cargo, conceder aumento e contratar.
+          </li>
+          <li>
+            <strong>{br(fiscal.limites.legal, 2)}% — teto legal.</strong>{" "}
+            O limite máximo propriamente dito.
+          </li>
+        </ul>
+        <p>
+          <strong>Este site não recalcula o percentual.</strong> Ele vem
+          calculado e declarado pelo próprio município e homologado no SICONFI.
+          Recalcular criaria uma segunda verdade que ninguém assinou. E o site
+          não interpreta, não acusa e não declara ninguém em descumprimento —
+          mostra o número publicado ao lado do limite.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="implausivel">
+        <h2>O que quer dizer “valor implausível”</h2>
+        <p>
+          É a marca que aparece quando o município declarou um percentual que
+          nenhuma prefeitura pode ter: acima de {LIMITE_PLAUSIVEL}% (gastaria
+          com pessoal mais do que toda a sua receita) ou abaixo de zero (gasto
+          negativo).
+        </p>
+        <p>
+          Os dois casos existem no dado real de 2024. Guaratinga/BA declarou{" "}
+          <strong>371,02%</strong>; Paripueira/AL declarou despesa negativa e,
+          portanto, <strong>−19,35%</strong>. Não descrevem prefeituras em
+          crise: descrevem formulários preenchidos errado.
+        </p>
+        <p>
+          Eles continuam sendo exibidos, e marcados. Corrigir seria inventar
+          número; esconder seria escolher quais declarações você pode ver. Mas
+          eles <strong>ficam fora das médias</strong> e das frases de tendência
+          — um valor de 371% entre mil e quatrocentos puxa a média quase um
+          ponto inteiro.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="funcao">
+        <h2>Despesa por função, e o que é “liquidada”</h2>
+        <p>
+          <strong>Função orçamentária</strong> é a área em que o dinheiro foi
+          gasto: educação, saúde, urbanismo, assistência social. São{" "}
+          {FUNCOES_DA_PORTARIA} funções fixadas pela Portaria MOG 42/1999, e
+          todo município usa a mesma lista — é o que torna a comparação possível.
+        </p>
+        <p>
+          <strong>Liquidada</strong> quer dizer o que de fato foi gasto: o
+          serviço foi prestado ou o material entregue, e a prefeitura reconheceu
+          a dívida. É diferente de <em>dotação</em> (o que foi orçado, ou seja,
+          a intenção) e de <em>empenhada</em> (o dinheiro reservado). Só a
+          liquidada responde “quanto gastou”.
+        </p>
+        {f && (
+          <p>
+            Os valores publicados aqui são do {f.periodo}º bimestre de{" "}
+            {f.exercicio}, e <strong>acumulam o ano inteiro</strong> até ali —
+            não são o gasto daqueles dois meses.
+          </p>
+        )}
+      </section>
+
+      <section className={estilos.bloco} id="comparacao">
+        <h2>Por que a comparação é entre anos, e não entre bimestres</h2>
+        <p>
+          Porque o relatório é <strong>acumulado</strong>. O 6º bimestre já
+          contém o 4º — medindo os {br(c.publicaram)} municípios que publicaram
+          os dois, <strong>63% do valor do 6º bimestre é literalmente o do
+          4º</strong>. Compará-los seria comparar um número com ele mesmo mais
+          um pedaço, e a fatia de cada função mal se moveria: menos de um ponto
+          percentual, na mediana.
+        </p>
+        <p>
+          Entre o mesmo bimestre de dois anos diferentes, os períodos não se
+          sobrepõem, e a mudança é real. É por isso que a página compara{" "}
+          {f?.anterior ? `${f.anterior.exercicio}/${f.anterior.periodo} com ${f.exercicio}/${f.periodo}` : "o mesmo bimestre de dois anos"}.
+        </p>
+        <p>
+          E a página só chama de mudança um deslocamento de{" "}
+          <strong>1 ponto percentual ou mais</strong>. Abaixo disso ela diz que
+          ficou praticamente igual — descrever movimento de meio ponto como
+          tendência seria vender ruído como descoberta.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="inflacao">
+        <h2>Os valores estão corrigidos pela inflação?</h2>
+        <p>
+          <strong>Não.</strong> Todos os valores em reais são{" "}
+          <strong>nominais</strong>, exatamente como foram declarados. Quando a
+          página diz que o gasto de um município cresceu 13% de um ano para o
+          outro, parte disso é inflação.
+        </p>
+        <p>
+          Deflacionar exigiria escolher um índice e uma data-base, e essa
+          escolha muda o resultado. Preferimos publicar o número declarado e
+          dizer claramente o que ele é.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="quando">
+        <h2>De quando são os dados</h2>
+        <p>
+          Cada número carrega a data em que foi coletado, ao lado dele, na
+          página onde aparece. Não há dado sem procedência neste site.
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <strong>População e PIB:</strong> IBGE — Censo 2022 e PIB municipal
+            a preços correntes.
+          </li>
+          <li>
+            <strong>Despesa com pessoal:</strong> SICONFI/Tesouro Nacional, RGF
+            Anexo 01, {quadrimestre}
+            {fiscal.coletadoEm ? `, coletado em ${fiscal.coletadoEm.slice(0, 10)}` : ""}.
+          </li>
+          {f && (
+            <li>
+              <strong>Despesa por função:</strong> SICONFI/Tesouro Nacional,
+              RREO Anexo 02, {f.periodo}º bimestre de {f.exercicio}
+              {f.coletadoEm ? `, coletado em ${f.coletadoEm.slice(0, 10)}` : ""}.
+            </li>
+          )}
+        </ul>
+      </section>
+
+      <section className={estilos.bloco} id="faltando">
+        <h2>Meu município não aparece, ou aparece sem alguns números</h2>
+        <p>
+          O site cobre <strong>{br(total)} municípios</strong> — todos os do
+          Nordeste segundo o IBGE. Se o seu não estiver, o mais provável é
+          diferença de grafia na busca; tente pela{" "}
+          <Link href="/">lista completa</Link> ou pela página do estado.
+        </p>
+        <p>
+          Um caso é real e proposital: <strong>Fernando de Noronha</strong> tem
+          página de município no IBGE mas é <em>distrito estadual</em> de
+          Pernambuco, não município. Sem Executivo municipal, não entrega
+          relatório fiscal — por isso aparece sem os números do Tesouro. As duas
+          fontes estão certas: o IBGE conta território, o SICONFI conta quem
+          presta contas.
+        </p>
+        <p>
+          Município que existe mas está sem os números fiscais provavelmente não
+          entregou o relatório — ver{" "}
+          <a href="#travessao">por que aparece “—”</a>.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="nordeste">
+        <h2>Por que só o Nordeste</h2>
+        <p>
+          Porque foi onde a coleta começou, e porque cobrir uma região inteira
+          com verificação de cada número é mais útil que cobrir o país pela
+          metade. As fontes são nacionais e a extensão é possível — é decisão de
+          quando, não de se.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="baixar">
+        <h2>Como baixar e abrir os dados</h2>
+        <p>
+          Todo número deste site pode ser baixado. Um painel de dado público que
+          só deixa <em>olhar</em> está pela metade — número que ninguém consegue
+          baixar é número que ninguém consegue contestar.
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <a href="/dados/municipios.csv" download>Base completa</a> — os{" "}
+            {br(total)} municípios, uma linha cada.
+          </li>
+          <li>
+            <strong>Por estado</strong> — o link está no fim de cada página de
+            estado.
+          </li>
+          <li>
+            <strong>Por município</strong> — no fim de cada página de município,
+            com uma linha por indicador e período.
+          </li>
+        </ul>
+        <p>
+          Os arquivos usam <strong>ponto e vírgula</strong> como separador e{" "}
+          <strong>vírgula</strong> como decimal, que é o que o Excel em
+          português espera: basta abrir. Um CSV “padrão” internacional abriria
+          com tudo amontoado numa coluna só.
+        </p>
+        <p>
+          Se você for reimportar em outra ferramenta, o arquivo é UTF-8 com BOM.
+          Municípios que não entregaram relatório aparecem como{" "}
+          <code>nao</code> na coluna de publicação — nunca como zero.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="licenca">
+        <h2>Posso usar estes dados?</h2>
+        <p>
+          Sim. Os dados de origem são públicos, e este site é software livre sob{" "}
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">
+            AGPL-3.0
+          </a>
+          . Use, cite e redistribua.
+        </p>
+        <p>
+          Se for republicar, cite as fontes originais — IBGE e SICONFI/Tesouro
+          Nacional — e não só este site. É delas que o número vem.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="erro">
+        <h2>Achei um número errado</h2>
+        <p>
+          Há duas possibilidades, e vale separar antes de mais nada:
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <strong>O número aqui está diferente do que a fonte publica.</strong>{" "}
+            Aí o erro é nosso, e queremos saber. Abra uma questão no{" "}
+            <a
+              href="https://github.com/peterwkdev-creator/observatorio-ne/issues"
+              rel="noopener"
+            >
+              repositório do projeto
+            </a>{" "}
+            com o município e o número que você viu.
+          </li>
+          <li>
+            <strong>O número aqui é igual ao da fonte, e a fonte é que está
+            estranha.</strong> Aí o erro é da declaração, e nós não podemos
+            corrigi-lo — seria inventar um valor. O caminho é a prefeitura ou o
+            tribunal de contas do estado. Os casos mais gritantes já aparecem
+            marcados como <a href="#implausivel">implausíveis</a>.
+          </li>
+        </ul>
+        <p>
+          Todo o código de coleta é aberto, então dá para conferir exatamente
+          como cada número foi lido da API.
+        </p>
+      </section>
+
+      <section className={estilos.bloco} id="outras">
+        <h2>Onde perguntar o que este site não responde</h2>
+        <p>
+          Muita dúvida sobre estes dados não é sobre o site: é sobre o que o
+          município declarou, ou sobre a regra que ele seguiu. Esses lugares
+          respondem o que nós não temos como responder:
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <a href="https://siconfi.tesouro.gov.br/" rel="noopener">
+              SICONFI — Tesouro Nacional
+            </a>{" "}
+            — a fonte dos relatórios fiscais, com todos os anexos, não só os dois
+            usados aqui.
+          </li>
+          <li>
+            <a href="https://sidra.ibge.gov.br/" rel="noopener">IBGE / SIDRA</a>{" "}
+            — população, PIB e todas as outras estatísticas municipais.
+          </li>
+          <li>
+            <strong>A prefeitura do município</strong>, pelo portal da
+            transparência ou pelo pedido de acesso à informação (Lei 12.527/2011)
+            — é quem pode explicar uma declaração específica.
+          </li>
+          <li>
+            <strong>O tribunal de contas do estado</strong> — é quem fiscaliza
+            as contas municipais.
+          </li>
+        </ul>
+      </section>
+
+      <footer className={estilos.rodape}>
+        <p>
+          Ainda com dúvida? Abra uma questão no{" "}
+          <a
+            href="https://github.com/peterwkdev-creator/observatorio-ne/issues"
+            rel="noopener"
+          >
+            repositório
+          </a>
+          . Não há formulário nem cadastro neste site — ele é estático de
+          propósito, e não coleta nada sobre quem o visita.
+        </p>
+      </footer>
+    </main>
+  );
+}

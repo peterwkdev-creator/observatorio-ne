@@ -178,3 +178,58 @@ h1, h2, h3 {
 p, li {
   text-wrap: pretty;
 }
+
+/* Barra do site e rodape comum -- presentes em todas as paginas, definidos
+   aqui e nao num CSS module porque vivem no `layout.tsx`, que nao pertence a
+   rota nenhuma. */
+
+.barra-site {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-2) var(--e-4);
+  max-width: var(--largura-max);
+  margin: 0 auto;
+  padding: var(--e-3) var(--e-4);
+  border-bottom: 1px solid var(--borda);
+  font-size: var(--texto-sm);
+}
+
+.barra-marca {
+  font-weight: 600;
+  color: var(--tinta);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.barra-marca:hover {
+  text-decoration: underline;
+}
+
+.barra-site nav {
+  display: flex;
+  gap: var(--e-4);
+}
+
+.rodape-site {
+  max-width: var(--largura-max);
+  margin: 0 auto;
+  padding: var(--e-6) var(--e-4) var(--e-12);
+  border-top: 1px solid var(--borda);
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
+}
+
+.rodape-site nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2) var(--e-6);
+  margin-bottom: var(--e-3);
+}
+
+.rodape-site p {
+  margin: 0;
+  max-width: 68ch;
+  line-height: 1.6;
+}

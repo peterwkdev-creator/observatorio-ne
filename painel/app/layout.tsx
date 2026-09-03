@@ -41,7 +41,40 @@ export default function RootLayout({
         <a className="pular-para-conteudo" href="#conteudo">
           Pular para o conteúdo
         </a>
+
+        {/* Barra do site, em TODAS as páginas.
+            Antes disto, a ajuda só existiria para quem soubesse procurá-la —
+            e quem chega por uma busca cai direto na página de um município,
+            nunca na capa. A barra também dá a cada uma das 1.804 páginas um
+            link para a raiz, o que reforça o grafo interno consertado hoje. */}
+        <div className="barra-site">
+          <a className="barra-marca" href="/">Números Públicos</a>
+          <nav aria-label="Atalhos do site">
+            <a href="/ajuda/">Ajuda</a>
+            <a href="/dados/municipios.csv" download>Baixar dados</a>
+          </nav>
+        </div>
+
         {children}
+
+        <div className="rodape-site">
+          <nav aria-label="Rodapé">
+            <a href="/">Início</a>
+            <a href="/ajuda/">Ajuda</a>
+            <a href="/ajuda/#erro">Achei um número errado</a>
+            <a
+              href="https://github.com/peterwkdev-creator/observatorio-ne"
+              rel="noopener"
+            >
+              Código-fonte
+            </a>
+          </nav>
+          <p>
+            Dados abertos do IBGE e do SICONFI/Tesouro Nacional, com a fonte e a
+            data de coleta ao lado de cada número. Software livre sob AGPL-3.0.
+            Este site não coleta nada sobre quem o visita.
+          </p>
+        </div>
       </body>
     </html>
   );

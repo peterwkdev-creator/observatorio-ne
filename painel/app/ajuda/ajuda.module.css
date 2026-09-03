@@ -1,0 +1,118 @@
+.pagina {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--e-8) var(--e-4) var(--e-16);
+}
+
+.trilha {
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
+  margin-bottom: var(--e-6);
+}
+
+.trilha a {
+  color: var(--tinta-suave);
+}
+
+.titulo {
+  font-size: var(--texto-3xl);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--e-3);
+}
+
+.chamada {
+  font-size: var(--texto-lg);
+  line-height: 1.55;
+  color: var(--tinta-suave);
+  margin: 0 0 var(--e-8);
+  max-width: 58ch;
+}
+
+/* O sumario e o mecanismo principal desta pagina: quem chega aqui tem UMA
+   duvida e nao quer ler treze secoes. Ancoras nomeadas pela duvida, nao pelo
+   jargao -- "por que aparece um travessao", nao "convencoes de ausencia". */
+.sumario {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: var(--e-4) var(--e-6);
+  margin-bottom: var(--e-12);
+  box-shadow: var(--sombra);
+}
+
+.sumario h2 {
+  font-size: var(--texto-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tinta-fraca);
+  margin: 0 0 var(--e-3);
+}
+
+.sumario ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--e-2);
+}
+
+.sumario a {
+  font-size: var(--texto-base);
+}
+
+.bloco {
+  margin-bottom: var(--e-12);
+  /* O deslocamento do alvo da ancora: sem isto o titulo da secao encosta no
+     topo da janela e parece cortado ao chegar pelo sumario. */
+  scroll-margin-top: var(--e-6);
+}
+
+.bloco h2 {
+  font-size: var(--texto-xl);
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--e-4);
+}
+
+.bloco p {
+  font-size: var(--texto-base);
+  line-height: 1.65;
+  color: var(--tinta-suave);
+  margin: 0 0 var(--e-4);
+  max-width: 68ch;
+}
+
+.bloco strong {
+  color: var(--tinta);
+}
+
+.bloco code {
+  font-size: 0.9em;
+  background: var(--acento-suave);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.lista {
+  margin: 0 0 var(--e-4);
+  padding-left: var(--e-6);
+  max-width: 68ch;
+}
+
+.lista li {
+  font-size: var(--texto-base);
+  line-height: 1.65;
+  color: var(--tinta-suave);
+  margin-bottom: var(--e-2);
+}
+
+.lista strong {
+  color: var(--tinta);
+}
+
+.rodape {
+  border-top: 1px solid var(--borda);
+  padding-top: var(--e-4);
+  font-size: var(--texto-sm);
+  color: var(--tinta-fraca);
+  max-width: 68ch;
+}

@@ -33,6 +33,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      // A ajuda responde as duvidas que as buscas trazem literalmente
+      // ("o que e RCL ajustada", "o que e despesa liquidada"), entao ela e
+      // pagina de destino, nao so pagina de apoio.
+      url: `${SITE}/ajuda/`,
+      lastModified: atualizado,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
   ];
 
   // Prioridade acima da do municipio: sao 9 paginas que concentram o link
