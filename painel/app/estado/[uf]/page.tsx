@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import FuncoesBarras from "../../componentes/funcoes-barras";
 import TiraEstados from "../../componentes/tira-estados";
 import Termo from "../../componentes/termo";
-import { br, descricaoDe, escala, expandir, milReaisParaReais } from "../../../lib/dados";
+import {
+  br, concorda, descricaoDe, escala, expandir, fracaoDe, milReaisParaReais,
+} from "../../../lib/dados";
 import { resumirEstado, slugUf } from "../../../lib/estado";
 import { ROTULO_FAIXA } from "../../../lib/fiscal";
 import { medianaUltimaEdicao } from "../../../lib/ideb";
@@ -36,10 +38,10 @@ import estilos from "./estado.module.css";
  */
 
 async function carregar() {
-  const [snapshot, fiscal, ideb] = await Promise.all([
-    lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"),
+  const [snapshot, fiscal, ideb, idebFinais] = await Promise.all([
+    lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"), lerIdeb("anos_finais"),
   ]);
-  return { snapshot, fiscal, ideb, expandidos: expandir(snapshot) };
+  return { snapshot, fiscal, ideb, idebFinais, expandidos: expandir(snapshot) };
 }
 
 export async function generateStaticParams() {
@@ -144,7 +146,7 @@ export default async function PaginaEstado(
   { params }: { params: Promise<{ uf: string }> },
 ) {
   const { uf } = await params;
-  const { snapshot, fiscal, ideb, expandidos } = await carregar();
+  const { snapshot, fiscal, ideb, idebFinais, expandidos } = await carregar();
   const r = resumirEstado(snapshot, fiscal, expandidos, uf.toUpperCase());
   if (!r) notFound();
   // Quem presta contas como estado sai da conta de ausentes: ele entregou, na
@@ -169,6 +171,20 @@ export default async function PaginaEstado(
   // Mediana e não média: o IDEB vai de 0 a 10, e um punhado de municípios
   // pequenos com nota extrema desloca a média sem descrever o estado.
   const medIdeb = medianaUltimaEdicao(ideb, r.municipios.map((m) => m.codigo));
+
+  // Quantos municípios do estado NÃO têm rede municipal de ensino.
+  //
+  // O cartão dizia "mediana de N municípios" e parava ali, deixando o leitor
+  // supor que o resto era lacuna da coleta. Não é: o INEP publica o IDEB por
+  // REDE, e onde a prefeitura não administra as escolas não há linha municipal
+  // a publicar. Verificado em 04/09/2026 reingerindo com `--rede Estadual`:
+  // dos 138 sem rede municipal nos anos iniciais, 133 aparecem na estadual.
+  //
+  // O número dos anos finais é o que surpreende: no Paraná são 388 de 399.
+  const semRede = r.municipios.filter(
+    (m) => !ideb.municipios[String(m.codigo)]).length;
+  const semRedeFinais = r.municipios.filter(
+    (m) => !idebFinais.municipios[String(m.codigo)]).length;
 
   const de = CONTRACAO[r.uf.sigla] ?? `de ${r.uf.nome}`;
   const pop = r.uf.totais["populacao-censo-2022"] ?? null;
@@ -303,6 +319,13 @@ export default async function PaginaEstado(
               , anos iniciais · {medIdeb.edicao} · INEP
               <br />
               mediana de {br(medIdeb.base)} municípios, escala de 0 a 10
+              {semRede > 0 && (
+                <>
+                  <br />
+                  <strong>{br(semRede)}</strong>{" "}
+                  {semRede === 1 ? "não tem" : "não têm"} rede municipal
+                </>
+              )}
             </p>
           </article>
         )}
@@ -414,6 +437,49 @@ export default async function PaginaEstado(
               municipio={r.uf.nome}
             />
           </div>
+        </section>
+      )}
+
+      {/* O cartão do IDEB dizia "mediana de N municípios" e parava ali. Quem
+          lê supõe lacuna de coleta; não é. O INEP publica por REDE, e onde a
+          prefeitura não administra as escolas não há linha municipal.
+          Verificado, não suposto — ver a nota em `semRede`. */}
+      {(semRede > 0 || semRedeFinais > 0) && (
+        <section className={estilos.texto}>
+          <h2>Por que nem todo município {de} tem IDEB aqui</h2>
+          <p>
+            O INEP publica o IDEB <strong>por rede</strong>, e este site mostra
+            a <strong>municipal</strong> — a que a prefeitura administra, e a
+            única que pareia com o orçamento dela. Onde as escolas são de outra
+            rede, não há número municipal a publicar.
+          </p>
+          <ul className={estilos.lista}>
+            {semRede > 0 && (
+              <li>
+                <strong>{fracaoDe(semRede, r.uf.municipios)}</strong> {de}{" "}
+                {concorda(semRede, r.uf.municipios, "não tem", "não têm")} rede
+                municipal nos <strong>anos iniciais</strong> (1º ao 5º).
+              </li>
+            )}
+            {semRedeFinais > 0 && (
+              <li>
+                <strong>{fracaoDe(semRedeFinais, r.uf.municipios)}</strong>{" "}
+                {concorda(semRedeFinais, r.uf.municipios, "não tem", "não têm")}{" "}
+                nos <strong>anos finais</strong> (6º ao 9º)
+                {r.uf.municipios > 1 &&
+                  ` — ${br((semRedeFinais * 100) / r.uf.municipios, 0)}% do estado`}
+                .
+              </li>
+            )}
+          </ul>
+          <p className={estilos.ressalva}>
+            <strong>Isto não é lacuna da coleta.</strong> É como a educação
+            básica está dividida, e varia muito entre estados: no Paraná{" "}
+            <strong>388 dos 399</strong> municípios não têm rede própria nos
+            anos finais, enquanto em 16 unidades da federação nenhum município
+            fica de fora nos anos iniciais. O gasto municipal com educação
+            continua aparecendo — ele existe mesmo onde a rede é de outro ente.
+          </p>
         </section>
       )}
 

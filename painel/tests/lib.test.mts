@@ -13,7 +13,7 @@ import { test } from "node:test";
 import fs from "node:fs";
 import { inflateRawSync } from "node:zlib";
 
-import { descricaoDe } from "../lib/dados.ts";
+import { concorda, descricaoDe, fracaoDe } from "../lib/dados.ts";
 import {
   funcoesDoPais, mediana, panoramaEstados, posicaoNaLista,
 } from "../lib/nacional.ts";
@@ -405,4 +405,31 @@ test("sem valor próprio não há posição", () => {
 
 test("empate não conta como estar acima", () => {
   assert.equal(posicaoNoEstado(30, [30, 30, 30, 30, 30])!.abaixo, 0);
+});
+
+// ------------------------------------------------------------ concordância
+
+test("um estado com UM município não vira \"1 dos 1 municípios\"", () => {
+  // O Distrito Federal tem um município, e a concordância singular mordeu TRÊS
+  // vezes em 04/09/2026 — "Os 1 municípios", "0 de 0 que entregaram", "1 dos 1
+  // municípios não têm". Cada uma foi remendada onde apareceu; a seguinte
+  // apareceu em outro lugar. Este teste é o que impede a quarta.
+  assert.equal(fracaoDe(1, 1), "o único município");
+  assert.equal(fracaoDe(0, 1), "nenhum município");
+  assert.equal(concorda(1, 1, "não tem", "não têm"), "não tem");
+});
+
+test("a fração comum sai no plural", () => {
+  assert.equal(fracaoDe(388, 399), "388 dos 399 municípios");
+  assert.equal(concorda(388, 399, "não tem", "não têm"), "não têm");
+});
+
+test("um entre muitos usa \"de\", não \"dos\"", () => {
+  assert.equal(fracaoDe(1, 497), "1 de 497 municípios");
+  assert.equal(concorda(1, 497, "não tem", "não têm"), "não tem");
+});
+
+test("o substantivo é parametrizável e pluraliza junto", () => {
+  assert.equal(fracaoDe(3, 27, "estado"), "3 dos 27 estados");
+  assert.equal(fracaoDe(1, 1, "estado"), "o único estado");
 });

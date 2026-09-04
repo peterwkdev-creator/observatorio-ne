@@ -212,3 +212,43 @@ export function descricaoDe(principal: string, cauda: string, limite = 155): str
   const corte = principal.lastIndexOf(" ", limite - 1);
   return `${principal.slice(0, corte > 0 ? corte : limite - 1)}…`;
 }
+
+/**
+ * "3 dos 497 municípios", "o único município" — a fração por extenso.
+ *
+ * ## Por que isto existe
+ *
+ * A concordância singular já mordeu **três vezes** em 04/09/2026, sempre no
+ * Distrito Federal, que tem **um** município: "Os 1 municípios", "0 de 0 que
+ * entregaram", "1 dos 1 municípios não têm". Cada uma foi remendada onde
+ * apareceu, e a seguinte apareceu em outro lugar.
+ *
+ * Um estado com um município é caso de borda em toda frase que conta
+ * municípios — e há exatamente um estado assim. Escrever a regra uma vez custa
+ * menos que descobri-la a cada frase nova.
+ *
+ * @param quantos  o numerador
+ * @param total    o denominador
+ * @param nome     o substantivo no singular ("município")
+ */
+export function fracaoDe(
+  quantos: number,
+  total: number,
+  nome = "município",
+): string {
+  if (total === 1) {
+    // Com um só, "1 de 1" é ruído: ou é ele, ou não é.
+    return quantos === 1 ? `o único ${nome}` : `nenhum ${nome}`;
+  }
+  return `${br(quantos)} ${quantos === 1 ? "de" : "dos"} ${br(total)} ${nome}s`;
+}
+
+/** O verbo que acompanha `fracaoDe`: singular quando ela devolve singular. */
+export function concorda(
+  quantos: number,
+  total: number,
+  singular: string,
+  plural: string,
+): string {
+  return total === 1 || quantos === 1 ? singular : plural;
+}
