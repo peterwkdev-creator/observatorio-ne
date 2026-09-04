@@ -59,14 +59,19 @@ IBGE itself publishes**. Verifying one city proves the parser is right; only the
 sum proves the ingestion is *complete* — it catches a missing, duplicated or
 mis-summed municipality in a single comparison.
 
-| Indicator | Sum of municipalities | vs. IBGE regional total |
+Run against the live API on 2026-09-04, national cut (`--regiao BR`, IBGE's
+own N1 aggregate):
+
+| Indicator | Sum of municipalities | vs. IBGE national total |
 |---|---|---|
-| Population (2022 Census) | 54,658,515 | **exact** |
-| Estimated population (2024) | 57,112,096 | **exact** |
-| Municipal GDP (2021) | 1,243,103,275 (BRL thousands) | rounding, 5 (4.0e-09) |
+| Population (2022 Census) | 203,080,756 | **exact** |
+| Estimated population (2024) | 212,583,750 | **exact** |
+| Municipal GDP (2021) | 9,012,142,031 (BRL thousands) | rounding, 31 (3.4e-09) |
 
 **Exact equality is the wrong test for a rounded aggregate**, and the first real
-run showed why: GDP came out 5 apart in 1,243,103,280. IBGE publishes municipal
+run showed why: GDP came out 5 apart in 1,243,103,280 back when the cut was
+regional, and 31 apart in 9,012,142,000 nationally — the absolute gap grows
+with the sum, the relative one does not. IBGE publishes municipal
 GDP already rounded to thousands and computes the regional total before
 rounding. Widening the tolerance to hide that would be dishonest; the check
 **classifies** instead — below 1e-6 relative it is rounding and says so with the
@@ -79,7 +84,7 @@ times over.
 python -m unittest discover -s tests -t .
 ```
 
-55 tests, **no network and no real waiting** — the HTTP transport and the clock
+56 tests, **no network and no real waiting** — the HTTP transport and the clock
 are injected. The fixtures in `tests/fixtures/` are real captured responses from
 the IBGE API: the 75 municipalities of Sergipe, the 2022 Census population of
 Rio Grande do Norte, and the 2021 GDP of Sergipe.
