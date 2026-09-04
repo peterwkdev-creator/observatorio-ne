@@ -793,6 +793,37 @@ export default async function PaginaMunicipio(
         </section>
       )}
 
+      {/* Sem IDEB, a seção inteira sumia e a página não dizia por quê — a
+          pessoa não sabia se faltava coleta, se o município era pequeno demais
+          ou se havia outro motivo. Ausência sem explicação é a mesma falha que
+          "não entregou o relatório" tem, uma casa adiante.
+
+          **O motivo foi verificado, não suposto.** Reingerindo o arquivo do
+          INEP com `--rede Estadual` em 04/09/2026: dos 138 municípios sem rede
+          municipal nos anos iniciais, **133 aparecem com rede estadual**. Os
+          outros 5 (RS 3, MT 1, SC 1) não aparecem em nenhuma das duas, e sobre
+          eles não se sabe — por isso o texto diz "quase sempre" e não afirma o
+          caso específico. */}
+      {!iniciais && (
+        <section className={estilos.texto}>
+          <h2>Educação</h2>
+          <p>
+            O INEP publica o IDEB <strong>por rede</strong>, e não há rede
+            municipal de anos iniciais em {m.nome} no dado de{" "}
+            {ideb.edicoes[ideb.edicoes.length - 1]}. Quem administra essas
+            escolas é outra rede — <strong>quase sempre a estadual</strong>.
+          </p>
+          <p className={estilos.ressalva}>
+            <strong>Isto não é lacuna da coleta.</strong> É como a educação
+            básica está dividida ali, e acontece em{" "}
+            <strong>{br(snapshot.municipios.length - ideb.cobertura.municipios)}</strong>{" "}
+            dos {br(snapshot.municipios.length)} municípios do país,
+            concentrados no Sul e no Sudeste. O gasto do município com educação
+            continua acima, porque ele existe mesmo onde a rede é de outro ente.
+          </p>
+        </section>
+      )}
+
       {iniciais && (
         <section className={estilos.texto}>
           <h2>Educação: o que o dinheiro encontrou pela frente</h2>
