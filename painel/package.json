@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import ./tests/registrar.mjs --test tests/*.test.mts",
     "conferir-xlsx": "node scripts/conferir-xlsx.mjs out/dados/municipios.xlsx out/dados/municipios.csv",
+    "indexnow": "node scripts/indexnow.mjs",
     "auditar": "node scripts/auditar.mjs http://127.0.0.1:8791 / /ajuda/ /estado/ce/ /estado/rs/ /estado/df/ /municipio/imperatriz-ma/ /municipio/guaratinga-ba/ /municipio/volta-redonda-rj/ /municipio/brasilia-df/"
   },
   "dependencies": {

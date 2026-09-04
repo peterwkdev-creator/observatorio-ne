@@ -10,6 +10,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import fs from "node:fs";
 import { inflateRawSync } from "node:zlib";
 
 import { descricaoDe } from "../lib/dados.ts";
@@ -352,4 +353,25 @@ test("rótulo faltante não imprime 'undefined' na página", () => {
 
 test("sem bloco de funções, o país é null — não um total zerado", () => {
   assert.equal(funcoesDoPais({ limites: LIMITES, municipios: [] } as never), null);
+});
+
+// ------------------------------------------------------------- IndexNow
+
+test("a chave do IndexNow no script é EXATAMENTE a do arquivo público", () => {
+  // O protocolo compara as duas. Divergindo, toda submissão volta 403 — e o
+  // 403 só aparece quando alguém roda o envio, que pode ser semanas depois de
+  // a divergência entrar. É o tipo de defeito que não dói onde nasce.
+  const script = fs.readFileSync("scripts/indexnow.mjs", "utf-8");
+  const noScript = script.match(/^const CHAVE = "([^"]+)";$/m)?.[1];
+  assert.ok(noScript, "não achei a constante CHAVE no script");
+
+  const arquivo = `public/${noScript}.txt`;
+  assert.ok(fs.existsSync(arquivo),
+    `o arquivo público da chave não existe: ${arquivo}`);
+
+  const conteudo = fs.readFileSync(arquivo, "utf-8");
+  assert.equal(conteudo, noScript,
+    "o conteúdo do arquivo difere da chave — inclusive quebra de linha no fim conta");
+  // A regra do protocolo: 8 a 128 caracteres, só letras, números e hífen.
+  assert.match(noScript, /^[a-zA-Z0-9-]{8,128}$/);
 });

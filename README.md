@@ -140,6 +140,46 @@ comparing values becomes work.
 free), `aria-sort` only on the active column, and `prefers-reduced-motion`
 honoured.
 
+## Telling search engines the site changed
+
+```bash
+npm run indexnow
+```
+
+A sitemap solves **discovery**; it does not make anything happen sooner.
+Measured one day after publishing: Google had *detected* all 5,600 URLs from
+the sitemap and *crawled exactly one* — the home page.
+[IndexNow](https://www.indexnow.org/) is the other half: an active ping that a
+URL changed, which participating engines use to prioritise their crawl queue.
+
+Listening: **Bing, Yandex, Naver, Seznam, Yep and Amazon** — not Google, whose
+indexing API stays limited to job postings and livestreams.
+
+**Bing is the reason this is worth doing**, and not for Bing's own search: it is
+the index behind ChatGPT Search and Copilot. For a site whose content is factual
+answers with the source beside them, being citable by an assistant is plausibly
+worth more than a position on a search page.
+
+Three things the script refuses to do, each of them a mistake made once:
+
+- **Submit when only the code changed.** A static site rebuilds entirely on
+  every deploy, including for a CSS tweak. The guard fingerprints the **data
+  files**, not the generated HTML — a layout change tells nobody; a new
+  collection tells everybody. Override with `--forcar` if you know why.
+- **Submit before the key is live.** The key must be readable at the domain
+  root; that is what proves ownership. The script checks the **live** site
+  first, because submitting against a 404 key returns 403 and burns the
+  submission.
+- **Exit through `process.exit()` with a request in flight.** On Windows that
+  aborts the process outright and the exit code is lost in the crash, so a
+  pipeline reads a failure as a pass.
+
+The key is **not a secret** — the protocol requires it to be publicly readable.
+It lives in `public/`, and a test asserts the file content matches the constant
+in the script byte for byte, including the absence of a trailing newline. Get
+that wrong and every submission returns 403, weeks after the change that caused
+it.
+
 ## Every number is downloadable
 
 A public-data panel that only lets you *look* is half a panel: a number nobody
