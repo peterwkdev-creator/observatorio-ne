@@ -21,7 +21,7 @@ import {
   faixaDe, faixasEmLinha, FAIXA_DA_LETRA, LETRA_FAIXA,
   PRESTA_COMO_ESTADO, ROTULO_FAIXA,
 } from "../lib/fiscal.ts";
-import { posicaoEntre } from "../lib/posicao.ts";
+import { posicaoEntre, posicaoNoEstado } from "../lib/posicao.ts";
 import { xlsx } from "../lib/xlsx.ts";
 
 // ------------------------------------------------------------------ posicao
@@ -374,4 +374,35 @@ test("a chave do IndexNow no script é EXATAMENTE a do arquivo público", () => 
     "o conteúdo do arquivo difere da chave — inclusive quebra de linha no fim conta");
   // A regra do protocolo: 8 a 128 caracteres, só letras, números e hífen.
   assert.match(noScript, /^[a-zA-Z0-9-]{8,128}$/);
+});
+
+// ---------------------------------------------------- posição no estado
+
+test("posicaoNoEstado situa sem classificar", () => {
+  const p = posicaoNoEstado(30, [10, 20, 30, 40, 50]);
+  assert.deepEqual(p, { abaixo: 2, de: 5, mediana: 30 });
+});
+
+test("quem não tem o valor fica FORA da conta, não no fim", () => {
+  // Não saber a população de um município não o torna o menor do estado, e um
+  // denominador que inclui desconhecidos descreve outra coisa.
+  const com = posicaoNoEstado(30, [10, 20, 30, 40, 50, null, null, undefined]);
+  const sem = posicaoNoEstado(30, [10, 20, 30, 40, 50]);
+  assert.deepEqual(com, sem);
+});
+
+test("abaixo do mínimo não há posição — o Distrito Federal tem um município", () => {
+  assert.equal(posicaoNoEstado(30, [30]), null);
+  assert.equal(posicaoNoEstado(30, [10, 20, 30, 40]), null);
+  assert.ok(posicaoNoEstado(30, [10, 20, 30, 40, 50]));
+});
+
+test("sem valor próprio não há posição", () => {
+  assert.equal(posicaoNoEstado(null, [10, 20, 30, 40, 50]), null);
+  assert.equal(posicaoNoEstado(undefined, [10, 20, 30, 40, 50]), null);
+  assert.equal(posicaoNoEstado(NaN, [10, 20, 30, 40, 50]), null);
+});
+
+test("empate não conta como estar acima", () => {
+  assert.equal(posicaoNoEstado(30, [30, 30, 30, 30, 30])!.abaixo, 0);
 });

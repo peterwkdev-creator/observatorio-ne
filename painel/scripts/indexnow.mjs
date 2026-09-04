@@ -102,10 +102,41 @@ const SIGNIFICADO = {
   200: "aceito",
   202: "aceito; a chave ainda está sendo validada",
   400: "requisição malformada",
-  403: "CHAVE INVÁLIDA — o arquivo na raiz não confere com a chave enviada",
+  403: "chave recusada",
   422: "URLs fora do domínio declarado, ou lote grande demais",
   429: "cota excedida — esperar e repetir",
 };
+
+/**
+ * O 403 tem DOIS significados opostos, e o corpo da resposta é quem separa.
+ *
+ * Medido em 04/09/2026, no primeiro envio real: a conferência prévia passou —
+ * a chave estava no ar, 32 bytes, `text/plain` — e mesmo assim veio 403, com
+ * `errorCode: "SiteVerificationNotCompleted"`. **A verificação do IndexNow é
+ * assíncrona**: publicar a chave não a conclui, só a torna possível.
+ *
+ * O rótulo original dizia "CHAVE INVÁLIDA — o arquivo na raiz não confere", e
+ * teria mandado quem lesse conferir um arquivo perfeito. Um diagnóstico que
+ * aponta para o lugar errado custa mais que nenhum diagnóstico.
+ *
+ * A conferência prévia continua valendo: ela é necessária e não suficiente.
+ */
+function diagnostico(status, corpo) {
+  if (status !== 403) return SIGNIFICADO[status] ?? "código inesperado";
+  let codigo = "";
+  try {
+    codigo = JSON.parse(corpo).errorCode ?? "";
+  } catch {
+    // Corpo não-JSON: cai no genérico, e o corpo cru é impresso de qualquer
+    // forma pelo chamador.
+  }
+  if (codigo === "SiteVerificationNotCompleted") {
+    return "a verificação do domínio ainda não concluiu — ESPERAR e repetir, " +
+           "a chave está certa";
+  }
+  return `chave recusada${codigo ? ` (${codigo})` : ""} — conferir se o ` +
+         "arquivo na raiz tem exatamente a chave enviada";
+}
 
 /**
  * O fluxo inteiro numa função, para poder sair por `return`.
@@ -182,7 +213,7 @@ async function principal() {
   for (let i = 0; i < urls.length; i += LOTE) {
     const lote = urls.slice(i, i + LOTE);
     const { status, texto } = await enviar(lote);
-    const nota = SIGNIFICADO[status] ?? "código inesperado";
+    const nota = diagnostico(status, texto);
     console.log(`lote de ${lote.length}: HTTP ${status} — ${nota}`);
     if (texto.trim()) console.log(`  resposta: ${texto.trim()}`);
     if (status !== 200 && status !== 202) falhou = true;

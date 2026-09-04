@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { br, descricaoDe, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { slugUf, vizinhosDe } from "../../../lib/estado";
-import { posicaoEntre } from "../../../lib/posicao";
+import { posicaoEntre, posicaoNoEstado } from "../../../lib/posicao";
 import {
   coberturaTemporal, identificadorIbge, idCatalogo, palavrasChave, VARIAVEIS,
 } from "../../../lib/jsonld";
@@ -172,6 +172,26 @@ export default async function PaginaMunicipio(
   // O PIB vem em MIL reais no agregado do IBGE; per capita em reais inteiros.
   const pibReais = milReaisParaReais(pib);
   const perCapita = pibReais !== null && pop !== null && pop ? pibReais / pop : null;
+
+  // Onde este município cai entre os do estado. Vai em TODAS as páginas: se o
+  // contexto vale numa página curta, vale numa longa — e acrescentar só onde
+  // falta texto seria engordar para o buscador. Ver `posicaoNoEstado`.
+  const posPop = posicaoNoEstado(
+    pop, doEstado.map((x) => x.valores["populacao-censo-2022"] ?? null));
+  const posPerCapita = posicaoNoEstado(
+    perCapita,
+    doEstado.map((x) => {
+      const p = milReaisParaReais(x.valores["pib-municipal"] ?? null);
+      const q = x.valores["populacao-censo-2022"] ?? null;
+      return p !== null && q ? p / q : null;
+    }),
+  );
+  // Quantos municípios do estado também não entregaram. Só faz sentido na
+  // página de quem não entregou: ali transforma um vazio isolado num padrão.
+  const naoEntregaramNoEstado = doEstado.filter(
+    (x) => x.fiscal && x.fiscal.publicou === false).length;
+  const consultadosNoEstado = doEstado.filter(
+    (x) => x.fiscal?.publicou !== null && x.fiscal?.publicou !== undefined).length;
 
   const f = m.fiscal;
 
@@ -408,6 +428,41 @@ export default async function PaginaMunicipio(
         </article>
       </section>
 
+      {/* Um número sozinho não responde a pergunta que a pessoa tem, que é se
+          aquilo é grande ou pequeno. Esta seção põe a régua do estado ao lado —
+          e vai em todas as páginas, não só nas curtas: contexto que só aparece
+          onde falta texto é enchimento, e é o que a política de conteúdo em
+          escala do Google chama de abuso. Ver `posicaoNoEstado`. */}
+      {(posPop || posPerCapita) && uf && (
+        <section className={estilos.texto}>
+          <h2>{m.nome} no seu estado</h2>
+          {posPop && (
+            <p>
+              Em população, {m.nome} tem <strong>mais habitantes que{" "}
+              {br(posPop.abaixo)}</strong> dos <strong>{br(posPop.de)}</strong>{" "}
+              municípios {de(uf.nome)} — a mediana do estado é{" "}
+              <strong>{br(posPop.mediana, 0)}</strong> habitantes.
+            </p>
+          )}
+          {posPerCapita && perCapita !== null && (
+            <p>
+              O PIB por habitante, <strong>R$ {br(perCapita, 0)}</strong>, fica{" "}
+              <strong>
+                {perCapita >= posPerCapita.mediana ? "acima" : "abaixo"}
+              </strong>{" "}
+              da mediana {de(uf.nome)}, que é{" "}
+              <strong>R$ {br(posPerCapita.mediana, 0)}</strong>.
+            </p>
+          )}
+          <p className={estilos.ressalva}>
+            Municípios sem o valor na fonte <strong>ficam fora da conta</strong>,
+            não no fim dela: não saber a população de um município não o torna o
+            menor do estado. E isto <em>situa</em>, não classifica — população e
+            PIB não são mérito, e o site não os apresenta como se fossem.
+          </p>
+        </section>
+      )}
+
       <section className={estilos.texto}>
         <h2>O que o gasto com pessoal significa aqui</h2>
         {f?.faixa === "implausivel" ? (
@@ -482,13 +537,32 @@ export default async function PaginaMunicipio(
             contas.</em>
           </p>
         ) : f?.publicou === false ? (
-          <p>
-            <strong>{m.nome} não entregou</strong> o Relatório de Gestão Fiscal
-            do {quadrimestre} ao SICONFI. Isso não significa que o município
-            gaste zero com pessoal — significa que o dado <em>não existe</em> na
-            base do Tesouro Nacional. Ausência não é número, e este painel não a
-            converte em um.
-          </p>
+          <>
+            <p>
+              <strong>{m.nome} não entregou</strong> o Relatório de Gestão Fiscal
+              do {quadrimestre} ao SICONFI. Isso não significa que o município
+              gaste zero com pessoal — significa que o dado <em>não existe</em> na
+              base do Tesouro Nacional. Ausência não é número, e este painel não a
+              converte em um.
+            </p>
+            {/* A ausência sozinha parece caso isolado; com o estado ao lado,
+                vira padrão — e padrão é informação. Só entra na página de quem
+                não entregou, porque é sobre esse fato específico. */}
+            {naoEntregaramNoEstado > 1 && consultadosNoEstado > 0 && uf && (
+              <p>
+                Não é um caso isolado:{" "}
+                <strong>{br(naoEntregaramNoEstado)}</strong> dos{" "}
+                <strong>{br(consultadosNoEstado)}</strong> municípios{" "}
+                {de(uf.nome)} consultados também não entregaram —{" "}
+                <strong>
+                  {br((naoEntregaramNoEstado * 100) / consultadosNoEstado, 0)}%
+                </strong>
+                . <Link href={`/estado/${slugUf(m.uf)}/#comparacao`} prefetch={false}>
+                  Como {uf.nome} se compara ao país
+                </Link>.
+              </p>
+            )}
+          </>
         ) : (
           <p>
             O Relatório de Gestão Fiscal do {quadrimestre} deste município ainda

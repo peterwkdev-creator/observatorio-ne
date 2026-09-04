@@ -190,6 +190,18 @@ export default async function PaginaEstado(
     url: `${SITE}/estado/${slugUf(r.uf.sigla)}/`,
     license: "https://www.gnu.org/licenses/agpl-3.0.html",
     isAccessibleForFree: true,
+    // As fontes de onde este conjunto deriva. Estava só nas páginas de
+    // município e na capa; a de estado dizia de onde o dado vinha em PROSA e
+    // não em metadado, e o Dataset Search lê o metadado. Também inclui o INEP,
+    // que a página usa para o IDEB mediano.
+    isBasedOn: [
+      { "@type": "Dataset", name: "IBGE — Agregados",
+        url: "https://servicodados.ibge.gov.br" },
+      { "@type": "Dataset", name: "SICONFI — Tesouro Nacional",
+        url: "https://apidatalake.tesouro.gov.br" },
+      { "@type": "Dataset", name: "INEP — IDEB",
+        url: "https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb" },
+    ],
     inLanguage: "pt-BR",
     creator: { "@type": "Person", name: "Peter Wilhelm Kretzschmar" },
     // Ver a nota em `municipio/[slug]/page.tsx`: campos recomendados pela
