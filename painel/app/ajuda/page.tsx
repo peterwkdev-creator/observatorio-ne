@@ -52,6 +52,7 @@ export default async function PaginaAjuda() {
   const [snapshot, fiscal, ideb] = await Promise.all([
     lerSnapshot(), lerFiscal(), lerIdeb("anos_iniciais"),
   ]);
+  const idebFinais = await lerIdeb("anos_finais");
   const total = expandir(snapshot).length;
   const c = fiscal.cobertura;
   const naoPublicaram = c.consultados - c.publicaram;
@@ -331,11 +332,41 @@ export default async function PaginaAjuda() {
           como veio, com o aviso junto.
         </p>
         <p>
-          Cobertura: <strong>{ideb.cobertura.municipios}</strong> municípios
-          têm rede municipal nos anos iniciais, de{" "}
-          {snapshot.municipios.length} no país. Onde o município não administra
-          escola de 1º ao 5º ano, a rede é do estado e a seção não aparece —
-          ver <a href="#faltando">meu município não aparece</a>.
+          Cobertura, contra os <strong>{br(snapshot.municipios.length)}</strong>{" "}
+          municípios do país:
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <strong>{br(ideb.cobertura.municipios)}</strong> têm rede municipal
+            nos <strong>anos iniciais</strong> — faltam{" "}
+            {br(snapshot.municipios.length - ideb.cobertura.municipios)}.
+          </li>
+          <li>
+            <strong>{br(idebFinais.cobertura.municipios)}</strong> têm nos{" "}
+            <strong>anos finais</strong> — faltam{" "}
+            {br(snapshot.municipios.length - idebFinais.cobertura.municipios)},
+            e essa é a diferença que surpreende: no Paraná,{" "}
+            <strong>388 dos 399</strong> municípios não administram o 6º ao 9º
+            ano.
+          </li>
+        </ul>
+        <p>
+          {/* "a rede é do estado" era afirmação categórica. Verificado em
+              04/09/2026 reingerindo o arquivo do INEP com `--rede Estadual`:
+              dos 138 sem rede municipal nos anos iniciais, 133 aparecem na
+              estadual e 5 em nenhuma das duas. "Quase sempre" é o que o dado
+              sustenta; "é" não era. */}
+          Onde o município não administra aquela etapa, a rede é de outro ente
+          — <strong>quase sempre a estadual</strong>. Conferimos: dos{" "}
+          {br(snapshot.municipios.length - ideb.cobertura.municipios)} sem rede
+          municipal nos anos iniciais, <strong>133 aparecem no próprio arquivo
+          do INEP como rede estadual</strong>; cinco não aparecem em nenhuma das
+          duas, e sobre esses não sabemos.
+        </p>
+        <p>
+          Isso <strong>não é lacuna da coleta</strong>, e a página do município
+          e a do estado dizem isso onde acontece — ver{" "}
+          <a href="#faltando">meu município não aparece</a>.
         </p>
       </section>
 
@@ -400,6 +431,15 @@ export default async function PaginaAjuda() {
           Município que existe mas está sem os números fiscais provavelmente não
           entregou o relatório — ver{" "}
           <a href="#travessao">por que aparece “—”</a>.
+        </p>
+        <p>
+          E <strong>sem o IDEB é outra coisa</strong>, não a mesma ausência: o
+          INEP publica por rede, e onde a prefeitura não administra aquelas
+          escolas não há número municipal a publicar. Acontece em{" "}
+          {br(snapshot.municipios.length - ideb.cobertura.municipios)}{" "}
+          municípios nos anos iniciais e em{" "}
+          {br(snapshot.municipios.length - idebFinais.cobertura.municipios)} nos
+          anos finais — ver <a href="#ideb">o que é o IDEB</a>.
         </p>
       </section>
 
