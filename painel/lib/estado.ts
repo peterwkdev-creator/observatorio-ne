@@ -57,6 +57,7 @@ const FAIXAS_ZERADAS = (): Record<Faixa, number> => ({
   "acima-prudencial": 0,
   abaixo: 0,
   "sem-dado": 0,
+  "nao-consultado": 0,
 });
 
 export function resumirEstado(
@@ -72,7 +73,7 @@ export function resumirEstado(
     fiscal.municipios.map(([codigo, , , , publicou, percentual,
       limitePrudencial, despesa, rclAjustada]) => [codigo, {
       publicou, percentual, limitePrudencial, despesa, rclAjustada,
-      faixa: faixaDe(percentual, limitePrudencial, fiscal.limites),
+      faixa: faixaDe(percentual, limitePrudencial, fiscal.limites, publicou),
     } satisfies Fiscal]),
   );
 
@@ -89,7 +90,10 @@ export function resumirEstado(
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   const porFaixa = FAIXAS_ZERADAS();
-  for (const m of municipios) porFaixa[m.fiscal?.faixa ?? "sem-dado"] += 1;
+  // Município ausente do snapshot fiscal é `nao-consultado`, nunca `sem-dado`:
+  // o primeiro é uma afirmação sobre nós, o segundo sobre ele. Trocá-los
+  // acusa de não prestar contas quem simplesmente não foi perguntado.
+  for (const m of municipios) porFaixa[m.fiscal?.faixa ?? "nao-consultado"] += 1;
 
   const plausiveis = municipios
     .map((m) => m.fiscal)

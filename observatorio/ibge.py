@@ -142,6 +142,15 @@ def url_municipios_da_regiao(regiao: int = REGIAO_NORDESTE) -> str:
     return f"{BASE}/api/v1/localidades/regioes/{regiao}/municipios"
 
 
+def url_municipios_do_brasil() -> str:
+    """Os 5.571 municípios do país numa requisição só (2,4 MB, verificado)."""
+    return f"{BASE}/api/v1/localidades/municipios"
+
+
+def url_ufs_do_brasil() -> str:
+    return f"{BASE}/api/v1/localidades/estados"
+
+
 def url_ufs_da_regiao(regiao: int = REGIAO_NORDESTE) -> str:
     return f"{BASE}/api/v1/localidades/regioes/{regiao}/estados"
 
@@ -158,15 +167,33 @@ class Municipio:
 
     @classmethod
     def de_json(cls, bruto: dict) -> "Municipio":
-        """Achata `microrregiao.mesorregiao.UF.regiao`.
+        """Achata a hierarquia até a UF, por **dois caminhos**.
 
-        Levanta `ErroIBGE` com o objeto à vista quando a estrutura muda -- e ela
-        pode mudar: `regiao-imediata` já convive com `microrregiao` na mesma
-        resposta. Falhar aqui, dizendo qual registro quebrou, é melhor que
-        gravar um município sem UF e descobrir no painel.
+        O IBGE devolve `microrregiao.mesorregiao.UF` na maioria dos registros e
+        `regiao-imediata.regiao-intermediaria.UF` em alguns — as duas divisões
+        convivem na mesma resposta.
+
+        **Município novo vem com `microrregiao: null`.** Medido em 03/09/2026 na
+        lista nacional: **Boa Esperança do Norte/MT** (código 5101837), criado
+        recentemente e ainda sem microrregião atribuída, é o único dos 5.571
+        nessa situação. A versão anterior desta função levantava `ErroIBGE` nele
+        — o que estava certo para o Nordeste, onde o caso não existe, e teria
+        derrubado a ingestão nacional na primeira execução.
+
+        Falhar quando NENHUM dos dois caminhos serve continua sendo o certo:
+        gravar um município sem UF e descobrir no painel é pior.
         """
+        uf = None
+        micro = bruto.get("microrregiao")
+        if isinstance(micro, dict):
+            uf = micro.get("mesorregiao", {}).get("UF")
+        if not isinstance(uf, dict):
+            imediata = bruto.get("regiao-imediata")
+            if isinstance(imediata, dict):
+                uf = imediata.get("regiao-intermediaria", {}).get("UF")
         try:
-            uf = bruto["microrregiao"]["mesorregiao"]["UF"]
+            if not isinstance(uf, dict):
+                raise TypeError("nem microrregiao nem regiao-imediata")
             return cls(
                 codigo=int(bruto["id"]),
                 nome=bruto["nome"],
@@ -220,16 +247,26 @@ def url_serie(agregado: int, periodo: str, variavel: int, uf: int | str) -> str:
             f"/variaveis/{variavel}?localidades=N6[N3[{uf}]]")
 
 
+#: O nível do IBGE que representa o Brasil inteiro. N1 é o país, N2 a região,
+#: N3 a UF e N6 o município — e a conferência precisa saber em qual pedir.
+NIVEL_BRASIL = "N1[all]"
+
+
 def url_serie_regiao(agregado: int, periodo: str, variavel: int,
-                     regiao: int = REGIAO_NORDESTE) -> str:
-    """O mesmo indicador no nível da REGIÃO (N2), publicado pelo próprio IBGE.
+                     regiao: int | None = REGIAO_NORDESTE) -> str:
+    """O mesmo indicador no nível da REGIÃO (N2) ou do BRASIL (N1).
 
     Existe para conferência: a soma dos municípios tem de bater com o total que
     a fonte publica. É a diferença entre "o número que eu peguei" e "o número
     certo" -- e pega, de uma vez, município faltando, duplicado ou mal somado.
+
+    `regiao=None` pede o total do país. Sem isso, a ingestão nacional somaria
+    5.571 municípios e compararia com o total do **Nordeste** — batendo de
+    frente com a única verificação que o sistema tem.
     """
+    nivel = NIVEL_BRASIL if regiao is None else f"N2[{regiao}]"
     return (f"{BASE}/api/v3/agregados/{agregado}/periodos/{periodo}"
-            f"/variaveis/{variavel}?localidades=N2[{regiao}]")
+            f"/variaveis/{variavel}?localidades={nivel}")
 
 
 def total_da_regiao(dados: object) -> float | None:
@@ -291,17 +328,22 @@ def metadados_da_serie(dados: object) -> tuple[str, str]:
 def municipios(
     transporte: Transporte,
     ufs: list[int | str] | None = None,
-    regiao: int = REGIAO_NORDESTE,
+    regiao: int | None = REGIAO_NORDESTE,
     pausa: float = PAUSA_PADRAO,
     dormir: Callable[[float], None] = time.sleep,
 ) -> Iterator[Municipio]:
     """Os municípios, uma requisição por UF.
 
-    Uma requisição por UF, e não uma por município: são **nove** contra 1.794.
-    Sem `ufs`, faz uma única chamada para a região inteira.
+    Uma requisição por UF, e não uma por município: são **nove** contra 1.794 no
+    Nordeste, e **27** contra 5.571 no país.
+
+    Sem `ufs`, faz uma única chamada — para a região, ou para o Brasil inteiro
+    quando `regiao is None`.
     """
     urls = ([url_municipios_da_uf(uf) for uf in ufs]
-            if ufs else [url_municipios_da_regiao(regiao)])
+            if ufs
+            else [url_municipios_do_brasil() if regiao is None
+                  else url_municipios_da_regiao(regiao)])
     for i, url in enumerate(urls):
         if i:
             dormir(pausa)

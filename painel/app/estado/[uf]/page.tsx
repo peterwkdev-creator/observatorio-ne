@@ -8,6 +8,9 @@ import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { resumirEstado, slugUf } from "../../../lib/estado";
 import { ROTULO_FAIXA } from "../../../lib/fiscal";
 import { medianaUltimaEdicao } from "../../../lib/ideb";
+import {
+  coberturaTemporal, idCatalogo, palavrasChave, VARIAVEIS,
+} from "../../../lib/jsonld";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import estilos from "./estado.module.css";
 
@@ -76,20 +79,39 @@ export async function generateMetadata(
 /**
  * "do Maranhão", "da Bahia", "de Alagoas" — a preposição que o nome pede.
  *
- * Escrito à mão porque não há regra: é o gênero e o número do artigo que cada
- * estado carrega, e "de Sergipe" ao lado de "do Ceará" na mesma frase denuncia
- * texto gerado. Nove nomes cabem numa tabela.
+ * Escrito à mão porque **não há regra**: é o gênero e o artigo que cada nome
+ * carrega, e "de Sergipe" ao lado de "do Ceará" na mesma frase denuncia texto
+ * gerado. Vinte e sete nomes cabem numa tabela; uma heurística por terminação
+ * erraria em Alagoas, Goiás, Sergipe, Roraima e no Distrito Federal.
  */
 const CONTRACAO: Record<string, string> = {
+  AC: "do Acre",
   AL: "de Alagoas",
+  AM: "do Amazonas",
+  AP: "do Amapá",
   BA: "da Bahia",
   CE: "do Ceará",
+  DF: "do Distrito Federal",
+  ES: "do Espírito Santo",
+  GO: "de Goiás",
   MA: "do Maranhão",
+  MG: "de Minas Gerais",
+  MS: "de Mato Grosso do Sul",
+  MT: "de Mato Grosso",
+  PA: "do Pará",
   PB: "da Paraíba",
   PE: "de Pernambuco",
   PI: "do Piauí",
+  PR: "do Paraná",
+  RJ: "do Rio de Janeiro",
   RN: "do Rio Grande do Norte",
+  RO: "de Rondônia",
+  RR: "de Roraima",
+  RS: "do Rio Grande do Sul",
+  SC: "de Santa Catarina",
   SE: "de Sergipe",
+  SP: "de São Paulo",
+  TO: "do Tocantins",
 };
 function crase(nome: string): string {
   const achado = Object.values(CONTRACAO).find((v) => v.endsWith(nome));
@@ -129,6 +151,14 @@ export default async function PaginaEstado(
     isAccessibleForFree: true,
     inLanguage: "pt-BR",
     creator: { "@type": "Person", name: "Peter Wilhelm Kretzschmar" },
+    // Ver a nota em `municipio/[slug]/page.tsx`: campos recomendados pela
+    // documentação do Google para `Dataset`, que decidem se o conjunto aparece
+    // descrito no Dataset Search.
+    identifier: `${SITE}/estado/${slugUf(r.uf.sigla)}/`,
+    keywords: palavrasChave([r.uf.nome, r.uf.sigla, "IDEB", "IBGE", "SICONFI"]),
+    temporalCoverage: coberturaTemporal(snapshot, fiscal, ideb),
+    variableMeasured: VARIAVEIS,
+    includedInDataCatalog: { "@id": idCatalogo(SITE) },
     spatialCoverage: {
       "@type": "Place",
       name: `${r.uf.nome}, Brasil`,
@@ -244,7 +274,11 @@ export default async function PaginaEstado(
         </p>
         <ul className={estilos.faixas}>
           {(["acima-legal", "acima-prudencial", "abaixo", "implausivel",
-            "sem-dado"] as const).map((f) => (
+            "sem-dado", "nao-consultado"] as const)
+            // Faixa vazia não vira linha: "0 ainda não consultado" é ruído
+            // depois que a varredura fecha, e some sozinho quando fecha.
+            .filter((f) => r.porFaixa[f] > 0)
+            .map((f) => (
             <li key={f} className={estilos[f]}>
               <strong className="tabular">{br(r.porFaixa[f])}</strong>{" "}
               {ROTULO_FAIXA[f].toLowerCase()}
@@ -315,11 +349,16 @@ export default async function PaginaEstado(
           </thead>
           <tbody>
             {r.municipios.map((m) => {
-              const faixa = m.fiscal?.faixa ?? "sem-dado";
+              const faixa = m.fiscal?.faixa ?? "nao-consultado";
               return (
                 <tr key={m.codigo}>
                   <th scope="row">
-                    <Link href={`/municipio/${m.slug}/`}>{m.nome}</Link>
+                    {/* Ver a nota em `municipio/[slug]/page.tsx`: 645 links
+                        nesta tabela, e a pré-busca especulativa dos que cabem
+                        na tela custa centenas de KB antes de qualquer clique. */}
+                    <Link href={`/municipio/${m.slug}/`} prefetch={false}>
+                      {m.nome}
+                    </Link>
                   </th>
                   <td className={`${estilos.num} tabular`}>
                     {br(m.valores["populacao-censo-2022"] ?? null)}
@@ -354,7 +393,7 @@ export default async function PaginaEstado(
           <li>
             <a href="/dados/municipios.csv" download>Base completa em CSV</a>{" "}
             <span className={estilos.fonte}>
-              — os {br(snapshot.municipios.length)} municípios do Nordeste
+              — os {br(snapshot.municipios.length)} municípios do país
             </span>
           </li>
         </ul>
@@ -367,7 +406,9 @@ export default async function PaginaEstado(
             .filter((u) => u.sigla !== r.uf.sigla)
             .map((u) => (
               <li key={u.sigla}>
-                <Link href={`/estado/${slugUf(u.sigla)}/`}>{u.nome}</Link>
+                <Link href={`/estado/${slugUf(u.sigla)}/`} prefetch={false}>
+                  {u.nome}
+                </Link>
               </li>
             ))}
         </ul>

@@ -216,11 +216,30 @@
   margin-right: var(--e-1);
 }
 
-.faixas li.acima-legal { border-left-color: #b4442f; }
-.faixas li.acima-prudencial { border-left-color: #b07d1a; }
-.faixas li.abaixo { border-left-color: var(--positivo); }
-.faixas li.implausivel { border-left-style: dashed; border-left-color: #6d5a8a; }
-.faixas li.sem-dado { border-left-color: var(--borda); }
+/* **A forma tem de vir AQUI**, e não numa regra `.acima-legal` solta: o
+   seletor `.faixas li` usa o atalho `border-left` e vence por especificidade,
+   apagando a largura e o estilo. Descoberto ao fotografar a página através de
+   um filtro de deuteranopia: as quatro barras saíam com a mesma espessura, e
+   as duas primeiras com o mesmo tom. */
+.faixas li.acima-legal {
+  border-left: 6px solid #b4442f;
+}
+.faixas li.acima-prudencial {
+  border-left: 6px double #946200;
+}
+.faixas li.abaixo {
+  border-left: 3px solid var(--positivo);
+}
+.faixas li.implausivel {
+  border-left: 3px dashed #6d5a8a;
+}
+.faixas li.sem-dado {
+  border-left: 3px solid var(--borda);
+}
+.faixas li.nao-consultado {
+  border-left: 3px dotted var(--borda-forte);
+}
+
 
 .rolagem {
   overflow-x: auto;
@@ -289,6 +308,7 @@
 .lista .abaixo { background: #e6f4ee; color: #17553f; }
 .lista .implausivel { background: #f1eef7; color: #4c3d66; }
 .lista .sem-dado { background: transparent; color: var(--tinta-fraca); }
+.lista .nao-consultado { background: transparent; color: var(--tinta-fraca); font-style: italic; }
 
 @media (prefers-color-scheme: dark) {
   .lista .acima-legal { background: #35201b; color: #f0a693; }
@@ -343,5 +363,114 @@
   }
   .lista thead th {
     white-space: normal;
+  }
+}
+
+/* ---- daltonismo: a faixa é dita por FORMA, não só por cor ---------------
+
+   Medido em 03/09/2026 simulando os três tipos sobre a paleta: na
+   **deuteranopia** — a forma mais comum, ~5% dos homens — "acima do limite
+   legal" e "acima do limite prudencial" davam **ΔE 4,2**, contra um limiar
+   prático de 10. As duas faixas fiscais mais consequentes viravam a mesma cor.
+
+   Tentei resolver na cor e **não dá**: contraste e separação para daltônicos
+   puxam em sentidos opostos aqui, porque os dois dependem da luminosidade
+   contra o mesmo vermelho. Escurecer o âmbar melhora o contraste e piora a
+   separação; clarear faz o inverso. O melhor compromisso encontrado (#946200)
+   dobra a separação — de 4,2 para 8,8 — e ainda fica abaixo do limiar.
+
+   Então a distinção passa a ser de **espessura e estilo da borda**, que
+   sobrevive a qualquer visão de cores, e a cor vira reforço:
+
+     acima do teto legal   borda grossa, sólida
+     acima do prudencial   borda dupla
+     dentro do limite      borda fina, sólida
+     implausível           tracejada
+     não consultado        pontilhada
+
+   O rótulo em texto já existia e continua — WCAG 1.4.1 nunca esteve em risco.
+   Isto não é sobre conformidade: é sobre a página funcionar sem obrigar a ler. */
+
+.acima-legal {
+  border-left-width: 5px;
+  border-left-style: solid;
+}
+
+.acima-prudencial {
+  border-left-width: 5px;
+  border-left-style: double;
+}
+
+.abaixo {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.implausivel {
+  border-left-width: 3px;
+  border-left-style: dashed;
+}
+
+.nao-consultado {
+  border-left-width: 3px;
+  border-left-style: dotted;
+}
+
+/* ---- impressão -------------------------------------------------------
+
+   As cores de faixa acima são fixas no módulo, com uma variante dentro de
+   `@media (prefers-color-scheme: dark)`. Na impressão o `prefers-color-scheme`
+   continua reportando a preferência do SISTEMA — quem usa tema escuro imprimia
+   "60,64%" e a tarja em salmão claro sobre papel branco, praticamente
+   invisível. As variáveis de `globals.css` não alcançam estas regras porque
+   elas não usam variável: usam o valor.
+
+   No papel, a faixa é dita por contorno e por texto, não por cor. */
+@media print {
+  .implausivel,
+  .acima-legal,
+  .acima-prudencial,
+  .abaixo,
+  .sem-dado,
+  .nao-consultado {
+    border-left-color: #000 !important;
+  }
+
+  .implausivel .valor,
+  .acima-legal .valor,
+  .acima-prudencial .valor,
+  .abaixo .valor,
+  .sem-dado .valor,
+  .nao-consultado .valor {
+    color: #000 !important;
+  }
+
+  .selo,
+  .implausivel .selo,
+  .acima-legal .selo,
+  .acima-prudencial .selo,
+  .abaixo .selo,
+  .sem-dado .selo,
+  .nao-consultado .selo {
+    background: transparent !important;
+    color: #000 !important;
+    border: 1px solid #000;
+  }
+
+  .lista .acima-legal,
+  .lista .acima-prudencial,
+  .lista .abaixo,
+  .lista .implausivel,
+  .lista .sem-dado,
+  .lista .nao-consultado {
+    background: transparent !important;
+    color: #000 !important;
+  }
+
+  /* A barra proporcional é decoração no papel: o número está na coluna ao
+     lado, e uma faixa cinza-clara imprime como mancha. */
+  .barra,
+  .trilho {
+    display: none !important;
   }
 }

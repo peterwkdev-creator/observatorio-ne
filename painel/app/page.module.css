@@ -211,3 +211,15 @@
   align-items: center;
   min-height: 24px;
 }
+
+/* Cabeçalho de grupo da tabela por região. `th[scope=colgroup]` em vez de uma
+   linha estilizada: leitor de tela anuncia o grupo ao entrar nele. */
+.grupo {
+  font-size: var(--texto-xs) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tinta-fraca) !important;
+  background: var(--fundo);
+  padding-top: var(--e-4) !important;
+  border-bottom: 1px solid var(--borda-forte) !important;
+}

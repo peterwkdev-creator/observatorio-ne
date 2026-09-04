@@ -40,7 +40,17 @@
   --borda-forte: #c3ccd6;
   --tinta: #12212e;
   --tinta-suave: #51606e;
-  --tinta-fraca: #7b8894;
+  /* Escurecido 7% em 03/09/2026. O tom anterior (#7b8894) dava **3,53:1**
+     sobre o fundo claro e 3,63:1 sobre o cartão — abaixo do mínimo de 4,5:1
+     do WCAG 1.4.3 AA, e usado em todo rótulo de fonte, data de coleta e
+     ressalva do site. Passou despercebido por meses porque a auditoria rodava
+     só no tema escuro, onde o mesmo valor dá 4,70:1 e passa.
+
+     A primeira correção (#697682) dava 4,53:1 — passava por **0,03 de
+     margem**, o que é passar por sorte: qualquer ajuste de fundo depois
+     reprovaria de novo, e ninguém ligaria uma coisa à outra. Este tom tem
+     folga real: **4,80:1 sobre o fundo e 4,93:1 sobre o cartão**. */
+  --tinta-fraca: #65727d;
   --acento: #0f5c8c;
   --acento-suave: #e8f1f7;
   --positivo: #1a6b4f;
@@ -253,4 +263,81 @@ p, li {
      e um logo achatado e pior que nenhum. */
   flex-shrink: 0;
   display: block;
+}
+
+/* ============================================================ impressão
+
+   Um painel de dado público é impresso e virado PDF — por vereador levando
+   número para sessão, por jornalista anexando a matéria, por professor. Sem
+   folha de impressão, o que sai do papel é a barra de navegação, uma lista de
+   downloads que ninguém pode clicar e nenhuma das URLs das fontes.
+
+   A regra que orienta tudo aqui: **no papel, procedência não pode depender de
+   clique**. O que na tela é link vira texto com o endereço ao lado. */
+
+@media print {
+  /* Tinta: fundo branco e texto preto, independentemente do tema da tela.
+     Imprimir o tema escuro gasta cartucho e sai ilegível. */
+  :root {
+    --fundo: #fff;
+    --superficie: #fff;
+    --tinta: #000;
+    --tinta-suave: #222;
+    --tinta-fraca: #444;
+    --borda: #bbb;
+    --borda-forte: #888;
+    --acento: #000;
+    --acento-suave: #f0f0f0;
+    --sombra: none;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* Navegação não existe no papel. */
+  .barra-site,
+  .rodape-site,
+  .pular-para-conteudo {
+    display: none !important;
+  }
+
+  /* A dica de termo é interação; no papel ela viraria um bloco solto no meio
+     da frase. A explicação completa está na página de ajuda. */
+  [role="tooltip"] {
+    display: none !important;
+  }
+
+  /* **Endereço ao lado do link**, para a fonte sobreviver ao papel. Só links
+     externos e absolutos: imprimir "(/municipio/anadia-al/)" ao lado de cada
+     vizinho encheria a folha de ruído sem serventia. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #444;
+    word-break: break-all;
+  }
+
+  /* Tabela cortada ao meio entre páginas perde o cabeçalho e vira coluna de
+     números órfãos. `thead` repetido é o que o HTML oferece para isso. */
+  thead {
+    display: table-header-group;
+  }
+
+  tr,
+  img,
+  svg {
+    break-inside: avoid;
+  }
+
+  h1, h2, h3 {
+    break-after: avoid;
+  }
+
+  /* Cartão e gráfico inteiros ou na página seguinte — meio gráfico não informa. */
+  article,
+  figure {
+    break-inside: avoid;
+  }
 }

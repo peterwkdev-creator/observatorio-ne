@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-import { br, dataLegivel, expandir } from "@/lib/dados";
+import { br, dataLegivel, expandir, valorDoIndicador } from "@/lib/dados";
 import { slugUf } from "@/lib/estado";
-import { lerFiscal, lerSnapshot, SITE } from "@/lib/servidor";
+import { coberturaTemporal, idCatalogo, palavrasChave, VARIAVEIS } from "@/lib/jsonld";
+import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "@/lib/servidor";
 import { Municipios } from "./municipios";
 import s from "./page.module.css";
 
@@ -10,10 +11,17 @@ import s from "./page.module.css";
  * Server Component: lê o snapshot do disco **no build** e devolve HTML pronto.
  * Nada é buscado pelo navegador de quem visita.
  */
+//: A ordem em que o IBGE lista as regiões, e a que todo brasileiro reconhece.
+//: Alfabética poria Centro-Oeste antes de Norte e Nordeste, o que não é como
+//: ninguém pensa no mapa.
+const REGIOES = ["Norte", "Nordeste", "Sudeste", "Sul", "Centro-Oeste"];
+
 export default async function Pagina() {
   const snapshot = await lerSnapshot();
   const municipios = expandir(snapshot);
-  const fiscal = await lerFiscal();
+  const [fiscal, ideb] = await Promise.all([
+    lerFiscal(), lerIdeb("anos_iniciais"),
+  ]);
   const coletadoEm =
     snapshot.indicadores.map((i) => i.coletadoEm).filter(Boolean).sort().at(-1) ??
     snapshot.geradoEm;
@@ -39,12 +47,29 @@ export default async function Pagina() {
         name: "Peter Wilhelm Kretzschmar",
       },
       {
+        // O catálogo que agrupa os 5.571 conjuntos por município. É a estrutura
+        // que a documentação do Google descreve para coleções: `DataCatalog`
+        // para o todo, `Dataset` para cada parte, e `includedInDataCatalog`
+        // ligando as duas pontas. Sem ele, um índice de dados vê 5.571
+        // conjuntos soltos e nada dizendo que são um só corpo.
+        "@type": "DataCatalog",
+        "@id": idCatalogo(SITE),
+        name: "Números Públicos",
+        url: `${SITE}/`,
+        inLanguage: "pt-BR",
+        publisher: { "@id": `${SITE}/#autor` },
+        license: "https://www.gnu.org/licenses/agpl-3.0.html",
+      },
+      {
         "@type": "Dataset",
         "@id": `${SITE}/#dados`,
-        name: "Dados abertos dos municípios do Nordeste",
+        includedInDataCatalog: { "@id": idCatalogo(SITE) },
+        identifier: `${SITE}/`,
+        keywords: palavrasChave(["IBGE", "SICONFI", "INEP", "IDEB"]),
+        name: "Dados abertos dos municípios brasileiros",
         description:
           `População, PIB, despesa com pessoal, despesa por função e IDEB dos ` +
-          `${municipios.length} municípios dos nove estados do Nordeste, a ` +
+          `${municipios.length} municípios dos 27 estados do Brasil, a ` +
           `partir das APIs públicas do IBGE, do SICONFI/Tesouro Nacional e do ` +
           `INEP, com a fonte e a data de coleta ao lado de cada número.`,
         url: `${SITE}/`,
@@ -54,18 +79,12 @@ export default async function Pagina() {
         creator: { "@id": `${SITE}/#autor` },
         // A cobertura temporal e espacial são o que distingue este conjunto de
         // qualquer outro que cite as mesmas fontes.
-        temporalCoverage: `${fiscal.exercicio}`,
+        temporalCoverage: coberturaTemporal(snapshot, fiscal, ideb),
         spatialCoverage: {
           "@type": "Place",
-          name: "Região Nordeste, Brasil",
+          name: "Brasil",
         },
-        variableMeasured: [
-          "População (Censo 2022)",
-          "PIB municipal a preços correntes",
-          "Despesa com pessoal sobre a receita corrente líquida ajustada",
-          "Despesa liquidada por função orçamentária",
-          "IDEB da rede municipal",
-        ],
+        variableMeasured: VARIAVEIS,
         distribution: [
           {
             "@type": "DataDownload",
@@ -93,9 +112,9 @@ export default async function Pagina() {
         <span className={s.selo}>Dados abertos · IBGE e Tesouro Nacional</span>
         <h1 className={s.titulo}>Números Públicos</h1>
         <p className={s.subtitulo}>
-          População, PIB, gasto com pessoal e despesa por função dos{" "}
-          <strong>{br(municipios.length)} municípios</strong> dos nove estados
-          do Nordeste — com a fonte e a data de coleta ao lado de cada número.
+          População, PIB, gasto com pessoal, despesa por função e IDEB dos{" "}
+          <strong>{br(municipios.length)} municípios</strong> dos 27 estados
+          do Brasil — com a fonte e a data de coleta ao lado de cada número.
         </p>
         <p className={s.coletadoEm}>
           Última coleta em{" "}
@@ -104,9 +123,9 @@ export default async function Pagina() {
       </header>
 
       <p className={s.aviso}>
-        Trabalho independente, construído sobre um termo de referência público.
-        <strong> Sem vínculo com o Consórcio Nordeste ou o PNUD</strong>, e sem
-        relação com qualquer processo de contratação.
+        Trabalho independente, sem vínculo com nenhum órgão público e sem
+        relação com qualquer processo de contratação. Começou pelo Nordeste,
+        sobre um termo de referência público, e hoje cobre o país inteiro.
       </p>
 
       <section className={s.cartoes} aria-label="Totais da região">
@@ -115,9 +134,19 @@ export default async function Pagina() {
             <h2 className={s.cartaoRotulo}>
               {ind.nome} · {ind.periodo}
             </h2>
-            <p className={`${s.cartaoValor} tabular`}>
-              {br(ind.totalRegiao)}
-              <span className={s.cartaoUnidade}>{ind.unidade}</span>
+            {/* Escalado pela unidade que a fonte declara. O total do PIB
+                saía com dez dígitos e um "Mil Reais" ao lado; agora sai
+                "R$ 9,01 trilhões", com o valor cheio no `title`. */}
+            <p
+              className={`${s.cartaoValor} tabular`}
+              title={valorDoIndicador(ind.totalRegiao, ind.unidade).exato}
+            >
+              {valorDoIndicador(ind.totalRegiao, ind.unidade).curto}
+              {valorDoIndicador(ind.totalRegiao, ind.unidade).unidadeVisivel && (
+                <span className={s.cartaoUnidade}>
+                  {valorDoIndicador(ind.totalRegiao, ind.unidade).unidadeVisivel}
+                </span>
+              )}
             </p>
             <p className={s.cartaoFonte}>
               IBGE, agregado {ind.agregado}, variável {ind.variavel}.{" "}
@@ -136,9 +165,10 @@ export default async function Pagina() {
           Por estado
         </h2>
         <p className={s.secaoNota}>
-          Soma dos municípios de cada estado. O total da região confere com o
-          agregado que o próprio IBGE publica — é assim que se sabe que a
-          coleta está completa, e não apenas que um número está certo.
+          Soma dos municípios de cada estado, agrupados por região. O total
+          nacional confere com o agregado que o próprio IBGE publica — é assim
+          que se sabe que a coleta está <strong>completa</strong>, e não apenas
+          que um número está certo.
         </p>
         <div className={s.rolagem}>
           <table className={s.tabela}>
@@ -153,14 +183,34 @@ export default async function Pagina() {
                   Municípios
                 </th>
                 {snapshot.indicadores.map((i) => (
-                  <th key={i.codigo} scope="col" className={s.numero}>
-                    {i.nome} <span className={s.ausente}>({i.periodo})</span>
+<th key={i.codigo} scope="col" className={s.numero}>
+                    {i.nome}{" "}
+                    <span className={s.ausente}>
+                      ({i.periodo}
+                      {/* A unidade estava só no cartão. Na tabela os números
+                          ficam CRUS de propósito -- comparar 27 estados pede
+                          coluna alinhada, e "R$ 2,72 tri" ao lado de
+                          "R$ 857,59 bi" é pior de comparar que dois inteiros
+                          --, mas então a unidade tem de estar dita aqui. */}
+                      {i.unidade ? `, ${i.unidade.toLowerCase()}` : ""})
+                    </span>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {snapshot.ufs.map((uf) => (
+            {/* Agrupada por região, e não numa lista plana de 27 linhas.
+                O `<tbody>` por região é o agrupamento que o HTML de tabela
+                oferece de verdade — leitor de tela anuncia o cabeçalho do
+                grupo, e não é só um estilo. */}
+            {REGIOES.map((regiao) => (
+              <tbody key={regiao}>
+                <tr>
+                  <th scope="colgroup" colSpan={2 + snapshot.indicadores.length}
+                      className={s.grupo}>
+                    {regiao}
+                  </th>
+                </tr>
+              {snapshot.ufs.filter((u) => u.regiao === regiao).map((uf) => (
                 <tr key={uf.sigla}>
                   <th scope="row">
                     {/* O unico link interno que a home tinha para conteudo era
@@ -185,7 +235,8 @@ export default async function Pagina() {
                   ))}
                 </tr>
               ))}
-            </tbody>
+              </tbody>
+            ))}
           </table>
         </div>
       </section>

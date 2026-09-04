@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   // ~155 caracteres: o Google trunca a partir daí. O que sobrou é o que
   // diferencia este site de qualquer outro que cite as mesmas fontes.
   description:
-    "População, PIB, gasto com pessoal, despesa por função e IDEB dos 1.794 " +
-    "municípios do Nordeste — cada número com a sua fonte e data de coleta.",
+    "População, PIB, gasto com pessoal, despesa por função e IDEB dos 5.571 " +
+    "municípios do Brasil — cada número com a sua fonte e data de coleta.",
   metadataBase: new URL("https://www.numerospublicos.com.br"),
   openGraph: {
     title: "Números Públicos",
     description:
-      "Dados abertos dos 1.794 municípios do Nordeste, com procedência.",
+      "Dados abertos dos 5.571 municípios do Brasil, com procedência.",
     locale: "pt_BR",
     type: "website",
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Números Públicos",
     description:
-      "Dados abertos dos 1.794 municípios do Nordeste, com procedência.",
+      "Dados abertos dos 5.571 municípios do Brasil, com procedência.",
   },
   robots: { index: true, follow: true },
 };

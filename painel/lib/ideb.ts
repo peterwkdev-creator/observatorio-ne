@@ -17,10 +17,14 @@
  * afirmar que um explica o outro é pesquisa que ninguém aqui fez. Não há
  * função de correlação neste arquivo, e isso é deliberado.
  *
- * **Não mistura as duas etapas.** Anos iniciais e anos finais têm escalas
- * diferentes — a mediana do Nordeste em 2023 é 5,2 numa e 3,7 na outra. Somar
- * ou plotar as duas no mesmo eixo repetiria o erro do Tesouro Selic: números
- * de significados diferentes na mesma coluna.
+ * **Não mistura as duas etapas.** Anos iniciais e anos finais têm provas e
+ * escalas próprias, e as medianas dos dois conjuntos ficam a mais de um ponto
+ * de distância. Somar ou plotar as duas no mesmo eixo repetiria o erro do
+ * Tesouro Selic: números de significados diferentes na mesma coluna.
+ *
+ * As medianas são **calculadas** (`medianaGeral`) e não escritas no texto —
+ * escritas, elas viraram falsas no dia em que o universo deixou de ser o
+ * Nordeste, sem que nada acusasse.
  */
 
 export type PontoIdeb = [
@@ -137,6 +141,25 @@ export function contarMetas(t: Trajetoria): { bateu: number; comMeta: number } {
     bateu: comMeta.filter((p) => p.bateuMeta).length,
     comMeta: comMeta.length,
   };
+}
+
+/**
+ * A mediana do IDEB de **todos** os municípios do snapshot, na edição mais
+ * recente. Serve para situar um município no país.
+ *
+ * **Calculada, e não escrita à mão.** Até 03/09/2026 a página dizia "no
+ * Nordeste a mediana de 2023 é 5,2 nos anos iniciais e 3,7 nos finais" com os
+ * dois números no texto. Eram corretos para o Nordeste e viraram falsos no
+ * instante em que o universo passou a ser o país — o tipo de afirmação que
+ * nenhum teste pega, porque continua sendo uma frase bem formada.
+ */
+export function medianaGeral(
+  s: SnapshotIdeb,
+): { mediana: number; edicao: number; base: number } | null {
+  return medianaUltimaEdicao(
+    s,
+    Object.keys(s.serie).map((c) => Number(c)),
+  );
 }
 
 /**

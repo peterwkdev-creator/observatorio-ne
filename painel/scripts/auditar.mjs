@@ -37,8 +37,26 @@ if (!base || caminhos.length === 0) {
 const nav = await puppeteer.launch({ executablePath: CHROME, headless: "new" });
 let achados = 0;
 
+/**
+ * Os dois temas, sempre.
+ *
+ * Medido em 03/09/2026: o Chrome sem cabeça desta máquina abre em **escuro**,
+ * e a auditoria rodava só nele. Deu "sem achados" por cinco execuções seguidas
+ * enquanto o tema claro tinha texto a **3,53:1**, abaixo do mínimo de 4,5:1 —
+ * atestado de saúde para um tema que ela nunca olhou.
+ *
+ * Contraste é a única checagem daqui que depende do tema; as outras não mudam.
+ * Rodar as duas mesmo assim custa segundos e evita a pergunta "será que este
+ * achado é dos dois?".
+ */
+const TEMAS = ["light", "dark"];
+
 for (const caminho of caminhos) {
+ for (const tema of TEMAS) {
   const p = await nav.newPage();
+  await p.emulateMediaFeatures([
+    { name: "prefers-color-scheme", value: tema },
+  ]);
   const recursos = [];
   p.on("response", async (r) => {
     try {
@@ -82,6 +100,68 @@ for (const caminho of caminhos) {
       .filter((x) => !espacado(x, alvos))
       .map((x) => `${x.e.textContent.trim().slice(0, 22)} (${Math.round(x.b.width)}x${Math.round(x.b.height)})`);
 
+    // ---- contraste (WCAG 1.4.3, AA) ----
+    // 4,5:1 para texto normal; 3:1 para texto grande (>=24px, ou >=18.66px
+    // em negrito). Medido no que ESTA na tela, com a cor de fundo efetiva --
+    // um elemento transparente herda o fundo do ancestral, e comparar contra
+    // "transparent" daria contraste infinito e um relatorio limpo e falso.
+    const lum = (c) => {
+      const [r, g, b] = c.map((v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const rgb = (s) => {
+      const m = s.match(/[\d.]+/g);
+      return m ? m.slice(0, 3).map(Number) : null;
+    };
+    const opaco = (s) => {
+      const m = s.match(/[\d.]+/g);
+      return !!m && (m.length < 4 || Number(m[3]) > 0.95);
+    };
+    const fundoDe = (el) => {
+      let n = el;
+      while (n && n !== document.documentElement) {
+        const c = getComputedStyle(n).backgroundColor;
+        if (opaco(c)) return rgb(c);
+        n = n.parentElement;
+      }
+      return rgb(getComputedStyle(document.body).backgroundColor) || [255, 255, 255];
+    };
+    const razao = (a, b) => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    };
+
+    const semContraste = [];
+    for (const el of document.querySelectorAll("body *")) {
+      // so elementos com texto PROPRIO, para nao medir o mesmo texto varias
+      // vezes subindo pela arvore
+      const texto = [...el.childNodes]
+        .filter((n) => n.nodeType === 3)
+        .map((n) => n.textContent.trim())
+        .join(" ")
+        .trim();
+      if (!texto) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === "hidden" || cs.display === "none") continue;
+      const b = el.getBoundingClientRect();
+      if (b.width === 0 || b.height === 0) continue;
+      const cor = rgb(cs.color);
+      if (!cor) continue;
+      const px = parseFloat(cs.fontSize);
+      const peso = parseInt(cs.fontWeight, 10) || 400;
+      const grande = px >= 24 || (px >= 18.66 && peso >= 700);
+      const exigido = grande ? 3 : 4.5;
+      const r = razao(cor, fundoDe(el));
+      if (r < exigido) {
+        semContraste.push(
+          `"${texto.slice(0, 22)}" ${r.toFixed(2)}:1 (exige ${exigido}, ${px}px)`
+        );
+      }
+    }
+
     const niveis = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")]
       .map((h) => ({ n: +h.tagName[1], t: h.textContent.trim().slice(0, 30) }));
     const saltos = [];
@@ -106,7 +186,7 @@ for (const caminho of caminhos) {
       descQuebrados: [...document.querySelectorAll("[aria-describedby]")]
         .map((e) => e.getAttribute("aria-describedby"))
         .filter((id) => !document.getElementById(id)),
-      saltos, pequenos, tipos,
+      saltos, pequenos, tipos, semContraste,
       h1: document.querySelectorAll("h1").length,
       navSemRotulo: [...document.querySelectorAll("nav")]
         .filter((n) => !n.getAttribute("aria-label") && !n.getAttribute("aria-labelledby")).length,
@@ -124,6 +204,11 @@ for (const caminho of caminhos) {
       titulo: document.title.length,
       descricao: (document.querySelector("meta[name=description]")?.content || "").length,
       lang: document.documentElement.lang,
+      // Página `noindex` não é indexada, então cobrar dado estruturado dela é
+      // cobrar trabalho que nenhum buscador vai ler. O 404 é o caso: ele
+      // declara `noindex` de propósito.
+      noindex: /noindex/i.test(
+        document.querySelector("meta[name=robots]")?.content || ""),
       nos: document.querySelectorAll("*").length,
     };
   });
@@ -132,7 +217,7 @@ for (const caminho of caminhos) {
   for (const x of recursos) por[x.tipo] = (por[x.tipo] || 0) + x.bytes;
   const total = Object.values(por).reduce((a, b) => a + b, 0);
 
-  console.log(`\n━━━ ${caminho}`);
+  console.log(`\n━━━ ${caminho}  [${tema}]`);
   console.log(`  ${(total / 1024).toFixed(0)} KB  ` +
     Object.entries(por).sort((a, b) => b[1] - a[1])
       .map(([t, b]) => `${t} ${(b / 1024).toFixed(0)}`).join("  "));
@@ -152,14 +237,17 @@ for (const caminho of caminhos) {
   flag(r.tabelasSemScope, `tabela sem scope: ${r.tabelasSemScope}`);
   flag(r.linksVagos, `link de texto vago: ${r.linksVagos}`);
   flag(r.pequenos.length, `alvo < 24px sem exceção: ${JSON.stringify(r.pequenos)}`);
+  flag(r.semContraste.length,
+    `contraste abaixo do mínimo (WCAG 1.4.3 AA): ${JSON.stringify(r.semContraste.slice(0, 6))}`);
   flag(r.rolaHorizontal, "rolagem horizontal");
-  flag(!r.tipos.length, "sem JSON-LD");
+  flag(!r.tipos.length && !r.noindex, "sem JSON-LD");
   flag(r.titulo > 60, `title com ${r.titulo}ch (o Google corta perto de 60)`);
   flag(r.descricao > 160, `description com ${r.descricao}ch (o Google corta perto de 160)`);
 
   achados += problemas.length;
   console.log(problemas.length ? "  ⚠ " + problemas.join("\n  ⚠ ") : "  ✓ sem achados");
   await p.close();
+ }
 }
 
 await nav.close();

@@ -18,6 +18,7 @@ from .ibge import (
     metadados_da_serie,
     total_da_regiao,
     url_serie_regiao,
+    REGIAO_NORDESTE,
     municipios as buscar_municipios,
     serie as buscar_serie,
     transporte_http,
@@ -30,6 +31,32 @@ UFS_NORDESTE = {
     21: "MA", 22: "PI", 23: "CE", 24: "RN", 25: "PB",
     26: "PE", 27: "AL", 28: "SE", 29: "BA",
 }
+
+UFS_BRASIL = {
+    11: "RO", 12: "AC", 13: "AM", 14: "RR", 15: "PA", 16: "AP", 17: "TO",
+    **UFS_NORDESTE,
+    31: "MG", 32: "ES", 33: "RJ", 35: "SP",
+    41: "PR", 42: "SC", 43: "RS",
+    50: "MS", 51: "MT", 52: "GO", 53: "DF",
+}
+
+#: O recorte é **bandeira, não pressuposto** — o mesmo desenho do
+#: `sys-educacao-inep`. Cravar o Nordeste no código transformaria a expansão
+#: numa refatoração; sendo parâmetro, ela é um comando.
+#:
+#: O segundo item é o nível em que o IBGE publica o total de conferência:
+#: `2` é a região Nordeste (N2), `None` é o Brasil (N1). Sem isso, a ingestão
+#: nacional somaria 5.571 municípios e compararia com o total do Nordeste,
+#: batendo de frente com a única verificação que este sistema tem.
+RECORTES = {
+    "NE": (UFS_NORDESTE, REGIAO_NORDESTE),
+    "BR": (UFS_BRASIL, None),
+}
+
+
+def recorte_de(args) -> tuple[dict[int, str], int | None]:
+    """As UFs e o nível de conferência do recorte pedido."""
+    return RECORTES[getattr(args, "regiao", "NE")]
 
 
 def br(valor: float | None, casas: int = 0) -> str:
@@ -77,7 +104,8 @@ def conferir(args) -> int:
         divergiu = False
         for ind in indicadores:
             periodo = INDICADORES[ind["codigo"]][1]
-            url = url_serie_regiao(ind["agregado"], periodo, ind["variavel"])
+            _, nivel = recorte_de(args)
+            url = url_serie_regiao(ind["agregado"], periodo, ind["variavel"], nivel)
             oficial = total_da_regiao(buscar_json(transporte, url))
             nossa = db.con.execute(
                 "SELECT SUM(valor) FROM observacao WHERE indicador = ?"
@@ -107,8 +135,10 @@ def conferir(args) -> int:
 def ingerir_municipios(args, transporte=None, dormir=None) -> int:
     """`transporte` e `dormir` são injetados pelo teste ponta a ponta."""
     extra = {} if dormir is None else {"dormir": dormir}
-    ufs = [args.uf] if args.uf else list(UFS_NORDESTE)
-    print(f"Ingerindo municípios de {len(ufs)} UF(s), pausa {args.pausa}s.")
+    todas, _ = recorte_de(args)
+    ufs = [args.uf] if args.uf else list(todas)
+    print(f"Ingerindo municípios de {len(ufs)} UF(s) "
+          f"[{getattr(args, 'regiao', 'NE')}], pausa {args.pausa}s.")
 
     lidos = novos = inalterados = 0
     erro = None
@@ -147,7 +177,8 @@ INDICADORES = {
 def ingerir_indicador(args, transporte=None, dormir=None) -> int:
     extra = {} if dormir is None else {"dormir": dormir}
     agregado, periodo, variavel = INDICADORES[args.indicador]
-    ufs = [args.uf] if args.uf else list(UFS_NORDESTE)
+    todas, _ = recorte_de(args)
+    ufs = [args.uf] if args.uf else list(todas)
     transporte = transporte or transporte_http()
     print(f"Ingerindo '{args.indicador}' (agregado {agregado}, período "
           f"{periodo}, variável {variavel}) em {len(ufs)} UF(s).")
@@ -270,7 +301,9 @@ def construir_parser() -> argparse.ArgumentParser:
 
     i = sub.add_parser("ingerir-municipios",
                        help="busca os municípios no IBGE e grava")
-    i.add_argument("--uf", type=int, choices=sorted(UFS_NORDESTE),
+    i.add_argument("--regiao", default="NE", choices=sorted(RECORTES),
+                   help="NE (padrão) ou BR; o recorte é bandeira, não código")
+    i.add_argument("--uf", type=int, choices=sorted(UFS_BRASIL),
                    help="só esta UF (código IBGE); padrão é as nove")
     i.add_argument("--pausa", type=float,
                    default=float(os.environ.get("OBS_PAUSA", PAUSA_PADRAO)),
@@ -285,7 +318,8 @@ def construir_parser() -> argparse.ArgumentParser:
     ii = sub.add_parser("ingerir-indicador",
                         help="busca um indicador no IBGE e grava")
     ii.add_argument("indicador", choices=sorted(INDICADORES))
-    ii.add_argument("--uf", type=int, choices=sorted(UFS_NORDESTE))
+    ii.add_argument("--regiao", default="NE", choices=sorted(RECORTES))
+    ii.add_argument("--uf", type=int, choices=sorted(UFS_BRASIL))
     ii.add_argument("--pausa", type=float,
                     default=float(os.environ.get("OBS_PAUSA", PAUSA_PADRAO)))
     ii.set_defaults(func=ingerir_indicador)
@@ -300,6 +334,8 @@ def construir_parser() -> argparse.ArgumentParser:
         "conferir",
         help="soma dos municípios × total regional do IBGE (integridade)")
     cf.set_defaults(func=conferir)
+    cf.add_argument("--regiao", default="NE", choices=sorted(RECORTES),
+                    help="define o nível do total oficial: N2 da região ou N1 do Brasil")
 
     e = sub.add_parser("exportar", help="gera o JSON que o painel consome")
     e.add_argument("--saida", default="painel/dados/snapshot.json")

@@ -25,6 +25,9 @@ export type Indicador = {
 export type UF = {
   sigla: string;
   nome: string;
+  /** "Nordeste", "Sudeste"... Entrou com a expansão nacional: 27 UFs numa
+   *  lista plana obrigam o leitor a varrer a tabela inteira. */
+  regiao: string;
   municipios: number;
   totais: Record<string, number | null>;
 };
@@ -138,9 +141,41 @@ export function escala(reais: number | null | undefined): {
   // **Só milhão para cima.** Abaixo disso a escala PIORA a leitura: "R$ 28.168"
   // é imediato e "R$ 28,17 mil" obriga a desfazer a conta. Escalar existe para
   // encurtar dígito demais, não para encurtar por encurtar.
+  //
+  // O trilhão entrou com a expansão nacional, em 03/09/2026. No Nordeste o
+  // maior valor era o PIB da Bahia, R$ 352 bilhões, e o caso nunca aparecia;
+  // no país, São Paulo publicava **"R$ 2.720 bilhões"** e o total do Brasil,
+  // "R$ 9.012 bilhões". Tecnicamente certo, e exatamente o que esta função
+  // existe para impedir: um número que o leitor tem de converter de cabeça.
+  if (abs >= 1e12) return { curto: nomear(1e12, "trilhão", "trilhões"), exato };
   if (abs >= 1e9) return { curto: nomear(1e9, "bilhão", "bilhões"), exato };
   if (abs >= 1e6) return { curto: nomear(1e6, "milhão", "milhões"), exato };
   return { curto: `R$ ${br(reais, 0)}`, exato };
+}
+
+/**
+ * O valor de um indicador na forma em que uma pessoa o lê, **decidindo pela
+ * unidade que a própria fonte declara**.
+ *
+ * A capa publicava o PIB nacional como **"9.012.142.031"** com "Mil Reais" ao
+ * lado — dez dígitos que ainda precisam ser multiplicados por mil de cabeça.
+ * É exatamente o defeito que `escala()` foi criada para corrigir nas páginas de
+ * município, e que a capa nunca recebeu: ali eram oito dígitos, e passou.
+ *
+ * A decisão sai de `unidade`, e não de uma lista de códigos de indicador. Um
+ * indicador novo em reais é escalado sozinho; um em pessoas continua contado.
+ * Amarrar isto ao código do indicador exigiria lembrar de mexer aqui a cada
+ * indicador novo — e ninguém lembra.
+ */
+export function valorDoIndicador(
+  valor: number | null | undefined,
+  unidade: string,
+): { curto: string; exato: string; unidadeVisivel: string } {
+  if (/mil\s*reais/i.test(unidade)) {
+    const e = escala(milReaisParaReais(valor));
+    return { ...e, unidadeVisivel: "" };
+  }
+  return { curto: br(valor), exato: br(valor), unidadeVisivel: unidade };
 }
 
 /**

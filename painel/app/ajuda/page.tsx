@@ -115,7 +115,7 @@ export default async function PaginaAjuda() {
           <li><a href="#inflacao">Os valores estão corrigidos pela inflação?</a></li>
           <li><a href="#quando">De quando são os dados</a></li>
           <li><a href="#faltando">Meu município não aparece</a></li>
-          <li><a href="#nordeste">Por que só o Nordeste</a></li>
+          <li><a href="#cobertura">Quais municípios estão cobertos</a></li>
           <li><a href="#baixar">Como baixar e abrir os dados</a></li>
           <li><a href="#licenca">Posso usar estes dados?</a></li>
           <li><a href="#erro">Achei um número errado</a></li>
@@ -268,9 +268,9 @@ export default async function PaginaAjuda() {
         <p>
           As <strong>etapas são separadas e não se comparam entre si</strong>.
           Anos iniciais (1º ao 5º) e anos finais (6º ao 9º) têm provas e
-          escalas próprias: no Nordeste, a mediana de 2023 é 5,2 numa e 3,7 na
-          outra. Um número não é &ldquo;pior&rdquo; que o outro; eles medem
-          coisas diferentes.
+          escalas próprias, e as medianas dos dois conjuntos ficam a mais de um
+          ponto de distância. Um número não é &ldquo;pior&rdquo; que o outro;
+          eles medem coisas diferentes.
         </p>
         <p>
           <strong>2005 e {ideb.edicoes[ideb.edicoes.length - 1]} não têm
@@ -288,10 +288,11 @@ export default async function PaginaAjuda() {
           como veio, com o aviso junto.
         </p>
         <p>
-          Cobertura: <strong>{ideb.cobertura.municipios}</strong> municípios do
-          Nordeste têm rede municipal nos anos iniciais. O que falta para os{" "}
-          {snapshot.municipios.length} do IBGE é Fernando de Noronha — ver{" "}
-          <a href="#faltando">meu município não aparece</a>.
+          Cobertura: <strong>{ideb.cobertura.municipios}</strong> municípios
+          têm rede municipal nos anos iniciais, de{" "}
+          {snapshot.municipios.length} no país. Onde o município não administra
+          escola de 1º ao 5º ano, a rede é do estado e a seção não aparece —
+          ver <a href="#faltando">meu município não aparece</a>.
         </p>
       </section>
 
@@ -340,7 +341,7 @@ export default async function PaginaAjuda() {
         <h2>Meu município não aparece, ou aparece sem alguns números</h2>
         <p>
           O site cobre <strong>{br(total)} municípios</strong> — todos os do
-          Nordeste segundo o IBGE. Se o seu não estiver, o mais provável é
+          Brasil segundo o IBGE. Se o seu não estiver, o mais provável é
           diferença de grafia na busca; tente pela{" "}
           <Link href="/" prefetch={false}>lista completa</Link> ou pela página do estado.
         </p>
@@ -359,13 +360,20 @@ export default async function PaginaAjuda() {
         </p>
       </section>
 
-      <section className={estilos.bloco} id="nordeste">
-        <h2>Por que só o Nordeste</h2>
+      <section className={estilos.bloco} id="cobertura">
+        <h2>Quais municípios estão cobertos</h2>
         <p>
-          Porque foi onde a coleta começou, e porque cobrir uma região inteira
-          com verificação de cada número é mais útil que cobrir o país pela
-          metade. As fontes são nacionais e a extensão é possível — é decisão de
-          quando, não de se.
+          <strong>Todos os {br(total)} do Brasil</strong>, segundo a lista de
+          localidades do IBGE. A coleta começou pelo Nordeste, com verificação
+          de cada número, e foi estendida ao país quando o método já estava
+          conferido — não antes.
+        </p>
+        <p>
+          Nem todo município aparece com todos os números, e a página sempre diz
+          por quê. Um pode não ter entregue o relatório fiscal; outro pode não
+          administrar escola de 1º ao 5º ano, e aí a rede é do estado. Ausência
+          está sempre marcada — ver <a href="#travessao">por que aparece
+          &ldquo;—&rdquo;</a>.
         </p>
       </section>
 

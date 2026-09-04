@@ -133,8 +133,15 @@ class TestIngestaoPontaAPonta(unittest.TestCase):
     def test_estrutura_inesperada_nao_grava_pela_metade(self):
         # Um registro quebrado no meio: ou entra tudo, ou nada entra — e a
         # coleta fica registrada com o erro.
+        #
+        # "Quebrado" aqui significa SEM NENHUM dos dois caminhos até a UF.
+        # A versão anterior deste teste removia só `microrregiao`, e passava
+        # por acidente: aquele registro não estava quebrado, estava no formato
+        # que o IBGE usa para município novo — e desde 03/09/2026 o motor o lê
+        # pelo `regiao-imediata`. A fixture é que precisava representar o caso.
         quebrado = json.loads(SERGIPE)
         del quebrado[40]["microrregiao"]
+        quebrado[40].pop("regiao-imediata", None)
         codigo, saida = self._rodar(
             Resposta(200, json.dumps(quebrado, ensure_ascii=False)))
 
@@ -142,6 +149,23 @@ class TestIngestaoPontaAPonta(unittest.TestCase):
         with Armazem(self.banco) as db:
             self.assertEqual(len(db.municipios()), 0)
             self.assertIn("estrutura inesperada", db.coletas()[0]["erro"])
+
+    def test_municipio_novo_sem_microrregiao_e_lido_pela_regiao_imediata(self):
+        """O caso real que teria derrubado a ingestão nacional.
+
+        **Boa Esperança do Norte/MT** (5101837) foi criado recentemente e vem
+        com `microrregiao: null` — o único assim entre os 5.571 do país. Sem o
+        caminho alternativo, a primeira execução nacional morria nele.
+        """
+        dados = json.loads(SERGIPE)
+        dados[40]["microrregiao"] = None
+        codigo, _ = self._rodar(
+            Resposta(200, json.dumps(dados, ensure_ascii=False)))
+
+        self.assertEqual(codigo, 0)
+        with Armazem(self.banco) as db:
+            self.assertEqual(len(db.municipios()), 75,
+                             "o município sem microrregião foi descartado")
 
 
 if __name__ == "__main__":

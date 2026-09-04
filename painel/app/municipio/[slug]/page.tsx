@@ -5,10 +5,13 @@ import { notFound } from "next/navigation";
 import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { slugUf, vizinhosDe } from "../../../lib/estado";
 import {
+  coberturaTemporal, identificadorIbge, idCatalogo, palavrasChave, VARIAVEIS,
+} from "../../../lib/jsonld";
+import {
   compararFuncoes, DESLOCAMENTO_MINIMO, FUNCOES_DA_PORTARIA, funcoesDe,
   indexarFiscal, ROTULO_FAIXA, rotuloPeriodo, slugDe, variacao,
 } from "../../../lib/fiscal";
-import { contarMetas, trajetoriaDe } from "../../../lib/ideb";
+import { contarMetas, medianaGeral, trajetoriaDe } from "../../../lib/ideb";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import FuncoesBarras from "../../componentes/funcoes-barras";
 import IdebSvg from "../../componentes/ideb-svg";
@@ -65,6 +68,30 @@ function descricaoDe(principal: string, cauda: string, limite = 155): string {
   return `${principal.slice(0, corte > 0 ? corte : limite - 1)}…`;
 }
 
+/**
+ * O `<title>`, dentro do que o Google mostra.
+ *
+ * O buscador corta perto de **60 caracteres**, e nomes brasileiros de município
+ * chegam longe: "Boa Esperança do Norte" com o sufixo completo dava 64, e o
+ * resultado apareceria truncado justamente no que diferencia a página.
+ *
+ * A escolha é encurtar o SUFIXO, nunca o nome: o nome é o que a pessoa digitou
+ * na busca, e é ele que precisa aparecer inteiro. Três variantes, da mais
+ * informativa para a mais curta, e a primeira que couber vence.
+ */
+function tituloDe(nome: string, uf: string): string {
+  const base = `${nome} (${uf})`;
+  for (const sufixo of [
+    " — população, PIB e gasto com pessoal",
+    " — população, PIB e dados fiscais",
+    " — dados abertos do município",
+    " — dados abertos",
+  ]) {
+    if ((base + sufixo).length <= 60) return base + sufixo;
+  }
+  return base;
+}
+
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> },
 ): Promise<Metadata> {
@@ -102,7 +129,7 @@ export async function generateMetadata(
   );
 
   return {
-    title: `${m.nome} (${m.uf}) — população, PIB e gasto com pessoal`,
+    title: tituloDe(m.nome, m.uf),
     description: descricao,
     alternates: { canonical: `${SITE}/municipio/${m.slug}/` },
     openGraph: {
@@ -159,10 +186,15 @@ export default async function PaginaMunicipio(
   const maior = funcoes?.fatias[0] ?? null;
 
   // As duas etapas ficam SEPARADAS de propósito. Anos iniciais e anos finais
-  // têm escalas diferentes -- a mediana do Nordeste em 2023 é 5,2 numa e 3,7
-  // na outra -- e juntá-las num número só repetiria o erro do Tesouro Selic.
+  // têm provas e escalas diferentes, e juntá-las num número só repetiria o
+  // erro do Tesouro Selic: grandezas distintas na mesma régua.
   const iniciais = trajetoriaDe(ideb, m.codigo);
   const finais = trajetoriaDe(idebFinais, m.codigo);
+  // As medianas do conjunto, para situar este município. Calculadas do
+  // snapshot: escritas à mão, elas viram mentira na primeira mudança de
+  // universo -- e foi exatamente o que a expansão nacional revelou.
+  const medianaIniciais = medianaGeral(ideb);
+  const medianaFinais = medianaGeral(idebFinais);
   // A fatia da educação, para a justaposição. NÃO é uma explicação da nota:
   // são dois fatos que ninguém publica lado a lado, e é o leitor quem pensa.
   const educacao = funcoes?.fatias.find((f) => f.nome === "Educação") ?? null;
@@ -190,6 +222,16 @@ export default async function PaginaMunicipio(
     isAccessibleForFree: true,
     inLanguage: "pt-BR",
     creator: { "@type": "Person", name: "Peter Wilhelm Kretzschmar" },
+    // Os cinco campos que a auditoria de 03/09/2026 achou ausentes contra a
+    // documentação do Google para `Dataset`. Nenhum é obrigatório -- e é por
+    // isso que passavam: a página valida sem eles. O que eles decidem é se o
+    // conjunto aparece DESCRITO no Google Dataset Search ou some no meio das
+    // páginas de texto.
+    identifier: identificadorIbge(m.codigo),
+    keywords: palavrasChave([m.nome, uf?.nome ?? m.uf, "IDEB", "IBGE", "SICONFI"]),
+    temporalCoverage: coberturaTemporal(snapshot, fiscal, ideb),
+    variableMeasured: VARIAVEIS,
+    includedInDataCatalog: { "@id": idCatalogo(SITE) },
     spatialCoverage: {
       "@type": "Place",
       name: `${m.nome}, ${m.uf}, Brasil`,
@@ -209,7 +251,7 @@ export default async function PaginaMunicipio(
         "@type": "DataDownload",
         encodingFormat: "text/csv",
         contentUrl: `${SITE}/dados/municipios.csv`,
-        name: "Base completa: 1.794 municípios do Nordeste",
+        name: `Base completa: ${br(snapshot.municipios.length)} municípios`,
       },
     ],
     isBasedOn: [
@@ -234,7 +276,14 @@ export default async function PaginaMunicipio(
         <Link href="/" prefetch={false}>Números Públicos</Link>
         <span aria-hidden="true"> › </span>
         {/* Era um `<span>`: a trilha prometia um nível que não existia. */}
-        <Link href={`/estado/${slugUf(m.uf)}/`}>{uf?.nome ?? m.uf}</Link>
+        {/* `prefetch={false}` aqui também, e a razão cresceu com a expansão:
+            a página de São Paulo tem 645 municípios listados e 649 KB de
+            documento. Pré-buscá-la de cada uma das 645 páginas de município
+            paulistas custava 200 KB por página, medidos, para uma navegação
+            que quem chega de uma busca quase nunca faz. */}
+        <Link href={`/estado/${slugUf(m.uf)}/`} prefetch={false}>
+          {uf?.nome ?? m.uf}
+        </Link>
         <span aria-hidden="true"> › </span>
         <span aria-current="page">{m.nome}</span>
       </nav>
@@ -290,7 +339,7 @@ export default async function PaginaMunicipio(
           </p>
         </article>
 
-        <article className={`${estilos.cartao} ${estilos[f?.faixa ?? "sem-dado"]}`}>
+        <article className={`${estilos.cartao} ${estilos[f?.faixa ?? "nao-consultado"]}`}>
           <h2 className={estilos.rotulo}>Despesa com pessoal</h2>
           <p className={`${estilos.valor} tabular`}>
             {f?.percentual === null || f?.percentual === undefined
@@ -315,7 +364,7 @@ export default async function PaginaMunicipio(
                 {ROTULO_FAIXA["sem-dado"]}
               </Termo>
             ) : (
-              ROTULO_FAIXA[f?.faixa ?? "sem-dado"]
+              ROTULO_FAIXA[f?.faixa ?? "nao-consultado"]
             )}
           </p>
           <p className={estilos.fonte}>
@@ -728,9 +777,9 @@ export default async function PaginaMunicipio(
               </p>
 
               {/* Gráfico SEPARADO, e não uma segunda linha no gráfico de cima.
-                  As duas etapas têm provas e escalas próprias: no Nordeste a
-                  mediana de 2023 é 5,2 nos anos iniciais e 3,7 nos finais, e
-                  essa diferença é de instrumento, não de desempenho. Duas
+                  As duas etapas têm provas e escalas próprias, e as
+                  medianas dos dois conjuntos ficam a mais de um ponto de
+                  distância -- diferença de instrumento, não de desempenho. Duas
                   linhas no mesmo eixo convidariam exatamente a leitura errada
                   -- "os anos finais são piores" --, que é a mesma classe do
                   erro do Tesouro Selic: grandezas diferentes na mesma régua.
@@ -745,9 +794,17 @@ export default async function PaginaMunicipio(
               <p className={estilos.ressalva}>
                 As duas etapas <strong>não se comparam entre si</strong> — têm
                 provas e escalas próprias, e por isso aparecem em gráficos
-                separados. No Nordeste a mediana de 2023 é <strong>5,2</strong>{" "}
-                nos anos iniciais e <strong>3,7</strong> nos finais: a diferença
-                é do instrumento, não um veredito sobre os alunos mais velhos.
+                separados.
+                {medianaIniciais && medianaFinais && (
+                  <>
+                    {" "}Entre os municípios cobertos, a mediana de{" "}
+                    {medianaIniciais.edicao} é{" "}
+                    <strong>{br(medianaIniciais.mediana, 1)}</strong> nos anos
+                    iniciais e <strong>{br(medianaFinais.mediana, 1)}</strong>{" "}
+                    nos finais: a diferença é do instrumento, não um veredito
+                    sobre os alunos mais velhos.
+                  </>
+                )}
               </p>
             </>
           )}
@@ -781,18 +838,26 @@ export default async function PaginaMunicipio(
           <ul className={estilos.vizinhos}>
             {vizinhos.map((v) => (
               <li key={v.codigo}>
-                <Link href={`/municipio/${v.slug}/`}>{v.nome}</Link>
+                {/* Sem pré-busca automática. Medido em 03/09/2026: numa
+                    página curta, os doze vizinhos cabem na primeira tela e o
+                    Next pré-buscava quatro deles — 186 KB antes de qualquer
+                    clique. `prefetch={false}` no App Router não desliga a
+                    pré-busca ao passar o mouse; desliga só a especulativa.
+                    Quem demonstra intenção continua ganhando o adiantamento. */}
+                <Link href={`/municipio/${v.slug}/`} prefetch={false}>
+                  {v.nome}
+                </Link>
               </li>
             ))}
           </ul>
           <p>
-            <Link href={`/estado/${slugUf(m.uf)}/`}>
+            <Link href={`/estado/${slugUf(m.uf)}/`} prefetch={false}>
               Ver os {br(uf?.municipios ?? 0)} municípios de{" "}
               {uf?.nome ?? m.uf}
             </Link>{" "}
             ·{" "}
             <Link href="/" prefetch={false}>
-              os {br(snapshot.municipios.length)} do Nordeste
+              os {br(snapshot.municipios.length)} do país
             </Link>
           </p>
         </section>

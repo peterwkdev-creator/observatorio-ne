@@ -67,8 +67,12 @@ class TestFormaDoSnapshot(unittest.TestCase):
 
     def test_uf_traz_totais_por_indicador(self):
         uf = self.snap["ufs"][0]
-        self.assertEqual(set(uf), {"sigla", "nome", "municipios", "totais"})
+        # `regiao` entrou com a expansão nacional: 27 UFs numa lista plana
+        # obrigam o leitor a varrer a tabela; agrupadas por região, não.
+        self.assertEqual(set(uf),
+                         {"sigla", "nome", "regiao", "municipios", "totais"})
         self.assertEqual(uf["sigla"], "SE")
+        self.assertEqual(uf["regiao"], "Nordeste")
         self.assertEqual(uf["municipios"], 75)
         self.assertIn("pib-municipal", uf["totais"])
 

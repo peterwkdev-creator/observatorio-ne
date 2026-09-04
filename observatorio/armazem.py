@@ -286,8 +286,13 @@ class Armazem:
 
         ufs = {}
         for m in self.municipios():
+            # `regiao` entra no snapshot desde a expansão nacional: com 27
+            # UFs numa lista plana, o leitor procura "Ceará" varrendo a tabela
+            # inteira. Agrupada por região, ele vai direto — e o dado já estava
+            # no banco, só não chegava ao painel.
             ufs.setdefault(m["uf_sigla"], {"sigla": m["uf_sigla"],
                                            "nome": m["uf_nome"],
+                                           "regiao": m["regiao"],
                                            "municipios": 0})
             ufs[m["uf_sigla"]]["municipios"] += 1
         for sigla, uf in ufs.items():

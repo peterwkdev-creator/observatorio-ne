@@ -85,3 +85,12 @@
     padding: var(--e-2);
   }
 }
+
+@media print {
+  /* Ver a nota em `municipio.module.css`: a barra repete o número da célula
+     vizinha, e no papel imprime como mancha cinza. */
+  .barra,
+  .trilho {
+    display: none !important;
+  }
+}

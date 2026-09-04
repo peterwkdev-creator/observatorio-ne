@@ -15,7 +15,10 @@ export type Faixa =
   | "acima-legal"
   | "acima-prudencial"
   | "abaixo"
-  | "sem-dado";
+  /** Consultado, e o município **não entregou** o relatório. */
+  | "sem-dado"
+  /** **Ainda não perguntamos.** Ver `ROTULO_FAIXA`. */
+  | "nao-consultado";
 
 /**
  * A faixa do plausivel: **entre 0 e 100%**.
@@ -66,7 +69,15 @@ export type SnapshotFiscal = {
     universo: number;
     consultados: number;
     publicaram: number;
-    municipiosIbgeNoNordeste: number;
+    /**
+     * Quantos municípios o IBGE conta na mesma área — sempre **um a mais** que
+     * o SICONFI, e esse um é Fernando de Noronha, distrito estadual de PE.
+     *
+     * Derivado do universo no motor Python, nunca literal: com a expansão
+     * nacional, o `1794` que estava cravado ali viraria uma diferença de 3.776
+     * que não existe, publicada com a autoridade de um número conferido.
+     */
+    municipiosIbge: number;
   };
   colunas: string[];
   municipios: LinhaFiscal[];
@@ -348,12 +359,23 @@ export type Fiscal = {
   faixa: Faixa;
 };
 
+/**
+ * O rótulo de cada faixa.
+ *
+ * **`sem-dado` e `nao-consultado` são coisas diferentes, e confundi-las é
+ * caluniar.** "Sem relatório entregue" é uma afirmação sobre o município;
+ * "ainda não consultado" é uma afirmação sobre nós. Até 03/09/2026 as duas
+ * colapsavam no mesmo rótulo — o que era inofensivo enquanto a varredura
+ * cobria 100% do universo, e virou falso no instante da expansão nacional, com
+ * 3.777 municípios ainda não varridos sendo acusados de não prestar contas.
+ */
 export const ROTULO_FAIXA: Record<Faixa, string> = {
   implausivel: "Valor implausível — provável erro de preenchimento",
   "acima-legal": "Acima do limite legal",
   "acima-prudencial": "Acima do limite prudencial",
   abaixo: "Dentro do limite",
   "sem-dado": "Sem relatório entregue",
+  "nao-consultado": "Ainda não consultado",
 };
 
 /** Onde o município cai em relação aos dois limites da Lei de
@@ -363,7 +385,12 @@ export function faixaDe(
   percentual: number | null,
   limitePrudencial: number | null,
   limites: SnapshotFiscal["limites"],
+  /** `null` = ainda não consultado; `false` = consultado e não entregou. */
+  publicou: boolean | null = false,
 ): Faixa {
+  // A ordem importa: "não perguntamos" vem ANTES de qualquer leitura do
+  // percentual, porque sem consulta não há percentual para interpretar.
+  if (publicou === null) return "nao-consultado";
   if (percentual === null) return "sem-dado";
   if (percentual > LIMITE_PLAUSIVEL) return "implausivel";
   if (percentual < MINIMO_PLAUSIVEL) return "implausivel";
@@ -385,7 +412,7 @@ export function indexarFiscal(s: SnapshotFiscal): Map<number, Fiscal> {
       limitePrudencial,
       despesa,
       rclAjustada,
-      faixa: faixaDe(percentual, limitePrudencial, s.limites),
+      faixa: faixaDe(percentual, limitePrudencial, s.limites, publicou),
     });
   }
   return mapa;
