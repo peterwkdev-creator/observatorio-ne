@@ -3,11 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import FuncoesBarras from "../../componentes/funcoes-barras";
+import TiraEstados from "../../componentes/tira-estados";
 import Termo from "../../componentes/termo";
-import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
+import { br, descricaoDe, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { resumirEstado, slugUf } from "../../../lib/estado";
 import { ROTULO_FAIXA } from "../../../lib/fiscal";
 import { medianaUltimaEdicao } from "../../../lib/ideb";
+import { panoramaEstados, posicaoNaLista } from "../../../lib/nacional";
 import {
   coberturaTemporal, idCatalogo, palavrasChave, VARIAVEIS,
 } from "../../../lib/jsonld";
@@ -55,20 +57,40 @@ export async function generateMetadata(
 
   const acima = r.porFaixa["acima-legal"];
   return {
-    title: `${r.uf.nome} — dados abertos dos ${r.uf.municipios} municípios`,
+    // Concordância: o Distrito Federal tem UM ente, e "dos 1 municípios" no
+    // título é o tipo de erro que faz o resultado de busca parecer gerado.
+    title: r.uf.municipios === 1
+      ? `${r.uf.nome} — dados abertos`
+      : `${r.uf.nome} — dados abertos dos ${r.uf.municipios} municípios`,
     // Ver a nota do recorte em `municipio/[slug]/page.tsx`: ~155 caracteres é
     // onde o Google trunca, e a cauda era a mesma frase nas nove páginas.
-    description:
-      (`Os ${r.uf.municipios} municípios ${crase(r.uf.nome)}: ` +
+    // O que aparece no Google, ANTES de a pessoa ver qualquer contexto da
+    // página — por isso a contagem precisa carregar a base junto. "497
+    // municípios ... 7 acima do limite legal" convida a ler 7/497, quando o
+    // denominador é quem entregou: 75. E `descricaoDe` descarta a cauda em vez
+    // de cortá-la no meio da palavra, que era o que o `.slice(155)` fazia.
+    description: descricaoDe(
+      (r.uf.municipios === 1
+        ? `${r.uf.nome}: `
+        : `Os ${r.uf.municipios} municípios ${crase(r.uf.nome)}: `) +
         (r.mediaPessoal !== null
-          ? `média de ${br(r.mediaPessoal, 2)}% da receita em pessoal, ` +
-            `${acima} acima do limite legal. `
-          : "") +
-        `Dados oficiais, com a fonte.`).slice(0, 155),
+          ? `${r.publicaram} entregaram relatório fiscal, ` +
+            `média de ${br(r.mediaPessoal, 2)}% da receita em pessoal e ` +
+            `${acima} acima do limite legal.`
+          // Sem média há dois motivos MUITO diferentes, e escrever o errado é
+          // acusar quem presta contas: o DF entrega o RGF na esfera estadual,
+          // porque não é município. Ver `PRESTA_COMO_ESTADO`.
+          : r.comoEstado === r.uf.municipios
+            ? "presta contas como estado, e não como município."
+            : `${r.publicaram === 0 ? "nenhum município entregou" : `${r.publicaram} entregaram`} relatório fiscal.`),
+      "Dados oficiais, com a fonte.",
+    ),
     alternates: { canonical: `${SITE}/estado/${slugUf(r.uf.sigla)}/` },
     openGraph: {
       title: `${r.uf.nome} — dados abertos`,
-      description: `Os ${r.uf.municipios} municípios ${crase(r.uf.nome)}, com procedência.`,
+      description: r.uf.municipios === 1
+        ? `${r.uf.nome}, com procedência.`
+        : `Os ${r.uf.municipios} municípios ${crase(r.uf.nome)}, com procedência.`,
       url: `${SITE}/estado/${slugUf(r.uf.sigla)}/`,
       locale: "pt_BR",
       type: "article",
@@ -125,6 +147,24 @@ export default async function PaginaEstado(
   const { snapshot, fiscal, ideb, expandidos } = await carregar();
   const r = resumirEstado(snapshot, fiscal, expandidos, uf.toUpperCase());
   if (!r) notFound();
+  // Quem presta contas como estado sai da conta de ausentes: ele entregou, na
+  // esfera onde de fato presta contas. Somá-lo aqui seria repetir, uma casa
+  // adiante, o erro que a faixa `como-estado` existe para corrigir.
+  const ausentes = r.uf.municipios - r.publicaram - r.comoEstado;
+
+  // Os 27 estados, para situar este entre eles — o que só ficou possível com
+  // a varredura nacional fechada. Ver a nota de desenho em `lib/nacional.ts`.
+  const panorama = panoramaEstados(fiscal);
+  const meu = panorama.find((x) => x.uf === r.uf.sigla);
+  const posTaxa = meu
+    ? posicaoNaLista(meu.taxa, panorama.map((x) => x.taxa))
+    : null;
+  const medianas = panorama
+    .map((x) => x.mediana)
+    .filter((v): v is number => v !== null);
+  const posMediana = meu?.mediana != null
+    ? posicaoNaLista(meu.mediana, medianas)
+    : null;
 
   // Mediana e não média: o IDEB vai de 0 a 10, e um punhado de municípios
   // pequenos com nota extrema desloca a média sem descrever o estado.
@@ -144,7 +184,8 @@ export default async function PaginaEstado(
     name: `Dados abertos dos municípios ${de}`,
     description:
       `População, PIB, despesa com pessoal e despesa liquidada por função ` +
-      `dos ${r.uf.municipios} municípios ${de}, a partir das APIs públicas do ` +
+      `${r.uf.municipios === 1 ? "do município" : `dos ${r.uf.municipios} municípios`} ` +
+      `${de}, a partir das APIs públicas do ` +
       `IBGE e do SICONFI/Tesouro Nacional.`,
     url: `${SITE}/estado/${slugUf(r.uf.sigla)}/`,
     license: "https://www.gnu.org/licenses/agpl-3.0.html",
@@ -191,7 +232,13 @@ export default async function PaginaEstado(
           {r.uf.nome} <span className={estilos.uf}>{r.uf.sigla}</span>
         </h1>
         <p className={estilos.chamada}>
-          Os <strong>{br(r.uf.municipios)} municípios</strong> {de}, com
+          {r.uf.municipios === 1 ? "O" : "Os"}{" "}
+          <strong>
+            {r.uf.municipios === 1
+              ? "município"
+              : `${br(r.uf.municipios)} municípios`}
+          </strong>{" "}
+          {de}, com
           população, PIB, gasto com pessoal e despesa por função — cada número
           com a sua fonte e a data em que foi coletado.
         </p>
@@ -227,7 +274,10 @@ export default async function PaginaEstado(
             {r.mediaPessoal === null ? "—" : `${br(r.mediaPessoal, 2)}%`}
           </p>
           <p className={estilos.fonte}>
-            média de {br(r.baseMedia)} municípios · {quadrimestre} · SICONFI
+            {r.baseMedia === 0
+              ? "sem base para calcular"
+              : `média de ${br(r.baseMedia)} ${r.baseMedia === 1 ? "município" : "municípios"}`}{" "}
+            · {quadrimestre} · SICONFI
           </p>
         </article>
 
@@ -252,19 +302,56 @@ export default async function PaginaEstado(
           </article>
         )}
 
+        {r.publicaram === 0 ? (
+          <article className={`${estilos.cartao} ${estilos["como-estado"]}`}>
+            <h2 className={estilos.rotulo}>Limite legal</h2>
+            <p className={`${estilos.valor} tabular`}>—</p>
+            <p className={estilos.fonte}>
+              {r.comoEstado === r.uf.municipios
+                ? "Não se aplica: presta contas como estado, e não como município."
+                : "Nenhum relatório municipal entregue no período."}
+            </p>
+          </article>
+        ) : (
         <article className={`${estilos.cartao} ${estilos.destaque}`}>
           <h2 className={estilos.rotulo}>Acima do limite legal</h2>
           <p className={`${estilos.valor} tabular`}>
             {br(r.porFaixa["acima-legal"])}
           </p>
+          {/* O denominador é quem ENTREGOU, nunca o total de municípios do
+              estado. "7 de 497" convida a ler que 490 estão bem — quando 422
+              deles apenas não prestaram contas, e sobre esses não se sabe
+              nada. Ver a nota em `ResumoEstado.publicaram`. */}
           <p className={estilos.fonte}>
-            de {br(r.uf.municipios)} municípios, no {quadrimestre}
+            de {br(r.publicaram)}{" "}
+            {r.publicaram === 1 ? "município que entregou" : "que entregaram"}{" "}
+            relatório, no {quadrimestre}
+            {ausentes > 0 && (
+              <>
+                <br />
+                <strong>{br(ausentes)}</strong>{" "}
+                {ausentes === 1 ? "não entregou" : "não entregaram"}: sobre{" "}
+                {ausentes === 1 ? "ele" : "esses"} não se sabe
+              </>
+            )}
+            {r.comoEstado > 0 && (
+              <>
+                <br />
+                {r.comoEstado === 1 ? "Outro ente presta" : `Outros ${br(r.comoEstado)} prestam`}{" "}
+                contas como estado
+              </>
+            )}
           </p>
         </article>
+        )}
       </section>
 
       <section className={estilos.texto}>
-        <h2>Onde os municípios {de} estão em relação ao limite</h2>
+        <h2>
+          {r.comoEstado === r.uf.municipios
+            ? `O limite de pessoal ${de}`
+            : `Onde os municípios ${de} estão em relação ao limite`}
+        </h2>
         <p>
           A Lei de Responsabilidade Fiscal fixa{" "}
           <strong>{br(fiscal.limites.legal, 2)}%</strong> da receita corrente
@@ -274,7 +361,7 @@ export default async function PaginaEstado(
         </p>
         <ul className={estilos.faixas}>
           {(["acima-legal", "acima-prudencial", "abaixo", "implausivel",
-            "sem-dado", "nao-consultado"] as const)
+            "sem-dado", "nao-consultado", "como-estado"] as const)
             // Faixa vazia não vira linha: "0 ainda não consultado" é ruído
             // depois que a varredura fecha, e some sozinho quando fecha.
             .filter((f) => r.porFaixa[f] > 0)
@@ -295,13 +382,13 @@ export default async function PaginaEstado(
             em pessoal move a média de duzentos quase dois pontos — e média
             contaminada por erro de preenchimento é erro na página, não detalhe.
           </p>
-        ) : (
+        ) : r.baseMedia > 0 ? (
           <p className={estilos.ressalva}>
             Nenhum município {de} declarou percentual fora da faixa de 0 a
-            100%, então a média acima usa todos os {br(r.baseMedia)} que
-            entregaram o relatório.
+            100%, então a média acima usa {r.baseMedia === 1 ? "o único" : `todos os ${br(r.baseMedia)}`}{" "}
+            que {r.baseMedia === 1 ? "entregou" : "entregaram"} o relatório.
           </p>
-        )}
+        ) : null}
       </section>
 
       {r.funcoes && (
@@ -325,8 +412,131 @@ export default async function PaginaEstado(
         </section>
       )}
 
+      {/* A pergunta que a página do município faz e a do estado não fazia.
+          Só ficou possível com os 5.570 municípios consultados — antes disso
+          não havia contra o que comparar. Ver `lib/nacional.ts`. */}
+      {meu && posTaxa && (
+        <section className={estilos.texto} id="comparacao">
+          {/* O número sai do panorama, nunca cravado: o Distrito Federal fica
+              de fora (não entrega como município, ver `PRESTA_COMO_ESTADO`),
+              então são 26 e não 27. Escrever "27" aqui seria a mesma mentira
+              silenciosa que a mediana regional cravada já custou. */}
+          <h2>
+            {r.uf.nome} e {br(panorama.length - 1)} outras unidades da federação
+          </h2>
+
+          <h3 className={estilos.subtitulo}>Quantos prestam contas</h3>
+          <p>
+            <strong>{br(meu.publicaram)}</strong> dos{" "}
+            <strong>{br(meu.municipios)}</strong> municípios {de} entregaram o
+            Relatório de Gestão Fiscal do {quadrimestre} —{" "}
+            <strong>{br(meu.taxa, 0)}%</strong>. Entre as{" "}
+            {br(panorama.length)} com relatório municipal,{" "}
+            {posTaxa.abaixo === 0 ? (
+              <>nenhum entrega menos</>
+            ) : (
+              <>
+                <strong>
+                  {br(posTaxa.abaixo)}{" "}
+                  {posTaxa.abaixo === 1 ? "entrega" : "entregam"} menos
+                </strong>
+              </>
+            )}
+            .
+          </p>
+          <div className={estilos.grafico}>
+            <TiraEstados
+              panorama={panorama}
+              destaque={r.uf.sigla}
+              valorDe={(x) => x.taxa}
+              formatar={(v) => `${br(v, 0)}%`}
+              rotuloEixo="Percentual de municípios que entregaram o relatório fiscal, por estado"
+              descricao={
+                `As ${panorama.length} unidades da federação pelo percentual ` +
+                `de municípios que entregaram o ` +
+                `relatório fiscal. ${r.uf.nome} está em ${br(meu.taxa, 0)}%, ` +
+                `acima de ${br(posTaxa.abaixo)} dos outros. O menor é ` +
+                `${br(Math.min(...panorama.map((x) => x.taxa)), 0)}% e o maior ` +
+                `${br(Math.max(...panorama.map((x) => x.taxa)), 0)}%.`
+              }
+            />
+          </div>
+          <p className={estilos.ressalva}>
+            A entrega varia de{" "}
+            <strong>
+              {br(Math.min(...panorama.map((x) => x.taxa)), 0)}% a{" "}
+              {br(Math.max(...panorama.map((x) => x.taxa)), 0)}%
+            </strong>{" "}
+            entre as unidades da federação, e{" "}
+            <strong>não é uma divisão regional</strong>: Santa Catarina entrega
+            86% e o Rio Grande do Sul 15%, vizinhos; a Bahia 99% e o Maranhão
+            49%, ambos no Nordeste. Entregar é obrigação da Lei de
+            Responsabilidade Fiscal, mas não entregar tem causas que este painel
+            não conhece — aqui está o número, não o motivo.
+          </p>
+
+          {meu.mediana !== null && posMediana && (
+            <>
+              <h3 className={estilos.subtitulo}>Quanto se gasta com pessoal</h3>
+              <p>
+                A mediana {de} é <strong>{br(meu.mediana, 2)}%</strong> da
+                receita corrente líquida ajustada, calculada sobre{" "}
+                <strong>{br(meu.base)}</strong>{" "}
+                {meu.base === 1 ? "município" : "municípios"}. Entre os{" "}
+                {br(medianas.length)} com base suficiente,{" "}
+                {posMediana.abaixo === 0 ? (
+                  <>nenhum tem mediana menor</>
+                ) : (
+                  <strong>
+                    {br(posMediana.abaixo)}{" "}
+                    {posMediana.abaixo === 1 ? "tem" : "têm"} mediana menor
+                  </strong>
+                )}
+                .
+              </p>
+              <div className={estilos.grafico}>
+                <TiraEstados
+                  panorama={panorama}
+                  destaque={r.uf.sigla}
+                  valorDe={(x) => x.mediana}
+                  formatar={(v) => `${br(v, 1)}%`}
+                  rotuloEixo="Mediana do gasto com pessoal, por estado"
+                  descricao={
+                    `As unidades da federação pela mediana do gasto com ` +
+                    `pessoal. ` +
+                    `${r.uf.nome} está em ${br(meu.mediana, 2)}%, acima de ` +
+                    `${br(posMediana.abaixo)} das ${br(posMediana.de)} ` +
+                    `com base suficiente.`
+                  }
+                />
+              </div>
+              <p className={estilos.ressalva}>
+                {meu.taxa < 50 ? (
+                  <>
+                    <strong>Leia esta mediana com reserva.</strong> Ela descreve
+                    os {br(meu.base)} municípios que entregaram — {br(meu.taxa, 0)}%
+                    do estado. Sobre os outros não se sabe nada, e nada garante
+                    que se pareçam com estes.
+                  </>
+                ) : (
+                  <>
+                    A mediana descreve os {br(meu.base)} municípios que
+                    entregaram, não os {br(meu.municipios)} do estado. Sobre os
+                    que não entregaram não se sabe nada.
+                  </>
+                )}
+              </p>
+            </>
+          )}
+        </section>
+      )}
+
       <section className={estilos.texto} id="municipios">
-        <h2>Os {br(r.uf.municipios)} municípios {de}</h2>
+        <h2>
+          {r.uf.municipios === 1
+            ? `O município ${de}`
+            : `Os ${br(r.uf.municipios)} municípios ${de}`}
+        </h2>
         <p>
           Em ordem alfabética. O percentual é o que o próprio município
           declarou ao SICONFI no {quadrimestre}; travessão significa que o
@@ -391,10 +601,17 @@ export default async function PaginaEstado(
             <span className={estilos.fonte}>— uma linha por município</span>
           </li>
           <li>
-            <a href="/dados/municipios.csv" download>Base completa em CSV</a>{" "}
+            <a href="/dados/municipios.xlsx" download>
+              Base completa em planilha
+            </a>{" "}
             <span className={estilos.fonte}>
-              — os {br(snapshot.municipios.length)} municípios do país
+              — os {br(snapshot.municipios.length)} municípios do país, com
+              dicionário de colunas e procedência
             </span>
+          </li>
+          <li>
+            <a href="/dados/municipios.csv" download>A mesma base em CSV</a>{" "}
+            <span className={estilos.fonte}>— para ler por programa</span>
           </li>
         </ul>
       </section>

@@ -36,6 +36,91 @@
   min-width: 7rem;
 }
 
+/* Com quatro controles, `min-width: 12rem` em todos estoura a linha em tela
+   média e empurra a contagem para baixo. O select de situação precisa de mais
+   largura porque os rótulos são frases ("Acima do limite prudencial"), e
+   truncá-los apagaria justamente a diferença entre eles. */
+.campo select#faixa {
+  min-width: 15rem;
+}
+
+/* ---- filtros aplicados ------------------------------------------------
+   Padrão de filtro de busca do GOV.UK: o que está em vigor fica visível e
+   removível item a item. Quem rolou a lista não vê mais os controles, e sem
+   isto não entende por que o resultado está curto. */
+
+.aplicados {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-2);
+  margin: calc(var(--e-4) * -1) 0 var(--e-4);
+  font-size: var(--texto-sm);
+}
+
+.aplicadosRotulo {
+  color: var(--tinta-suave);
+  font-size: var(--texto-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.aplicados ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remover,
+.limparTudo {
+  font: inherit;
+  font-size: var(--texto-sm);
+  /* 1.75rem = 28px de altura: acima dos 24px que o critério 2.5.8 do WCAG 2.2
+     exige para alvo isolado. Estes botões não são link dentro de frase, então
+     a isenção do critério não vale para eles. */
+  min-height: 1.75rem;
+  padding: var(--e-1) var(--e-3);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.remover {
+  background: var(--superficie);
+  border: 1px solid var(--borda-forte);
+  color: var(--tinta);
+}
+
+.remover:hover {
+  border-color: var(--acento);
+}
+
+.limparTudo {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--tinta-suave);
+  text-decoration: underline;
+}
+
+.remover:focus-visible,
+.limparTudo:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+/* No papel os controles somem: o que se imprime é o resultado, e um botão
+   impresso é ruído que finge ser clicável. */
+@media print {
+  .controles,
+  .aplicados,
+  .maisBotao {
+    display: none;
+  }
+}
+
 .contagem {
   font-size: var(--texto-sm);
   color: var(--tinta-suave);

@@ -18,7 +18,9 @@ export type Faixa =
   /** Consultado, e o município **não entregou** o relatório. */
   | "sem-dado"
   /** **Ainda não perguntamos.** Ver `ROTULO_FAIXA`. */
-  | "nao-consultado";
+  | "nao-consultado"
+  /** Presta contas como ESTADO, não como município. Ver `PRESTA_COMO_ESTADO`. */
+  | "como-estado";
 
 /**
  * A faixa do plausivel: **entre 0 e 100%**.
@@ -376,7 +378,29 @@ export const ROTULO_FAIXA: Record<Faixa, string> = {
   abaixo: "Dentro do limite",
   "sem-dado": "Sem relatório entregue",
   "nao-consultado": "Ainda não consultado",
+  "como-estado": "Presta contas como estado, não como município",
 };
+
+/**
+ * Entes que o IBGE lista como município mas que **não entregam RGF municipal**,
+ * porque não são municípios.
+ *
+ * Hoje só o Distrito Federal (5300108). Ele entrega o Anexo 01 normalmente —
+ * conferido na fonte em 04/09/2026, `co_esfera=E&id_ente=53`, 215 itens,
+ * "Governo do Distrito Federal". O que ele não faz, e nunca fará, é entregar
+ * como *município*.
+ *
+ * **Sem esta distinção o site acusava Brasília de não prestar contas**, e
+ * dizia "sobre ele não se sabe" a respeito de um ente que publica tudo. É o
+ * mesmo erro que a faixa `nao-consultado` existe para impedir, uma casa
+ * adiante: ali se confundia "não perguntamos" com "não entregou"; aqui,
+ * "perguntamos no lugar errado" com "não entregou".
+ *
+ * Lista literal, e não regra: é **um** ente entre 5.571, e uma regra inferida
+ * ("todo ente cujo código termina em 5300108") seria fingir generalidade que
+ * não existe. Se aparecer outro, entra aqui com a consulta que o comprovou.
+ */
+export const PRESTA_COMO_ESTADO: ReadonlySet<number> = new Set([5300108]);
 
 /** Onde o município cai em relação aos dois limites da Lei de
  *  Responsabilidade Fiscal. Sem percentual, a resposta é "não sei" — e "não
@@ -387,7 +411,15 @@ export function faixaDe(
   limites: SnapshotFiscal["limites"],
   /** `null` = ainda não consultado; `false` = consultado e não entregou. */
   publicou: boolean | null = false,
+  /** O código IBGE, só para reconhecer quem presta contas como estado. */
+  codigo?: number,
 ): Faixa {
+  // Antes de tudo: quem não é município não deixou de entregar relatório de
+  // município. Perguntar na esfera errada e registrar a ausência como falta
+  // é acusação sem lastro -- ver `PRESTA_COMO_ESTADO`.
+  if (codigo !== undefined && PRESTA_COMO_ESTADO.has(codigo)) {
+    return "como-estado";
+  }
   // A ordem importa: "não perguntamos" vem ANTES de qualquer leitura do
   // percentual, porque sem consulta não há percentual para interpretar.
   if (publicou === null) return "nao-consultado";
@@ -412,7 +444,7 @@ export function indexarFiscal(s: SnapshotFiscal): Map<number, Fiscal> {
       limitePrudencial,
       despesa,
       rclAjustada,
-      faixa: faixaDe(percentual, limitePrudencial, s.limites, publicou),
+      faixa: faixaDe(percentual, limitePrudencial, s.limites, publicou, codigo),
     });
   }
   return mapa;
@@ -434,4 +466,51 @@ export function slugDe(nome: string, uf: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return `${base}-${uf.toLowerCase()}`;
+}
+
+/**
+ * Uma letra por faixa, para viajar até o navegador sem virar peso.
+ *
+ * O filtro por situação fiscal da capa precisa da faixa dos 5.571 municípios no
+ * cliente. Um mapa `código → faixa` custaria ~180 KB de JSON com a chave e o
+ * nome da faixa repetidos milhares de vezes. Uma **string de um caractere por
+ * município**, na mesma ordem das linhas, custa 5.571 bytes — e comprime a
+ * cerca de 1 KB, porque a maioria dos vizinhos cai na mesma faixa.
+ *
+ * É a mesma lição do payload da capa, que caiu 57% ao parar de repetir chave.
+ */
+export const LETRA_FAIXA: Record<Faixa, string> = {
+  abaixo: "a",
+  "acima-prudencial": "p",
+  "acima-legal": "l",
+  implausivel: "i",
+  "sem-dado": "s",
+  "nao-consultado": "n",
+  "como-estado": "e",
+};
+
+/** O inverso de `LETRA_FAIXA`, para o navegador voltar da letra à faixa. */
+export const FAIXA_DA_LETRA: Record<string, Faixa> = Object.fromEntries(
+  Object.entries(LETRA_FAIXA).map(([faixa, letra]) => [letra, faixa as Faixa]),
+) as Record<string, Faixa>;
+
+/**
+ * A faixa de cada município, na ORDEM das linhas do snapshot.
+ *
+ * A ordem é o contrato: o navegador casa `faixas[i]` com `linhas[i]`. Mudar a
+ * ordem de um sem o outro desloca a situação fiscal de todos os municípios a
+ * partir dali, em silêncio — a página continuaria bem formada, mostrando a
+ * faixa do vizinho. Por isso as duas saem da MESMA lista, aqui.
+ */
+export function faixasEmLinha(
+  linhas: readonly (readonly unknown[])[],
+  fiscal: SnapshotFiscal,
+): string {
+  const porCodigo = indexarFiscal(fiscal);
+  return linhas
+    .map((l) => {
+      const f = porCodigo.get(l[0] as number);
+      return LETRA_FAIXA[f?.faixa ?? "nao-consultado"];
+    })
+    .join("");
 }

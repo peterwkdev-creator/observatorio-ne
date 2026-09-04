@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import BuscaCabecalho from "./componentes/busca-cabecalho";
 
 export const metadata: Metadata = {
   title: "Números Públicos — dados abertos dos municípios brasileiros",
@@ -68,9 +69,15 @@ export default function RootLayout({
             </svg>
             Números Públicos
           </a>
+          {/* A busca fica ENTRE a marca e os atalhos, e não no fim: é o
+              controle mais usado da barra, e o olho a procura ao lado do
+              nome do site. Em tela estreita ela desce para a linha de baixo
+              (ver `busca-cabecalho.module.css`), porque espremida ao lado
+              dos atalhos mostraria menos de oito caracteres. */}
+          <BuscaCabecalho />
           <nav aria-label="Atalhos do site">
             <a href="/ajuda/">Ajuda</a>
-            <a href="/dados/municipios.csv" download>Baixar dados</a>
+            <a href="/ajuda/#baixar">Baixar dados</a>
           </nav>
         </div>
 

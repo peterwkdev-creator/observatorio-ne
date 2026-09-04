@@ -385,6 +385,21 @@
   font-style: italic;
 }
 
+/* Presta contas como estado. Nem alerta nem ausência: há relatório, só não na
+   esfera municipal. Tracejado, para não se confundir com o pontilhado da
+   ausência nem com nenhuma cor da escala. */
+.como-estado {
+  border-left: 3px dashed var(--borda-forte);
+}
+.como-estado .valor {
+  color: var(--tinta-fraca);
+}
+.como-estado .selo {
+  background: transparent;
+  color: var(--tinta-fraca);
+  font-style: italic;
+}
+
 /* ---- daltonismo: a faixa é dita por FORMA, não só por cor ---------------
 
    Medido em 03/09/2026 simulando os três tipos sobre a paleta: na
@@ -461,6 +476,15 @@
   .abaixo .valor,
   .sem-dado .valor,
   .nao-consultado .valor {
+    color: #000 !important;
+  }
+
+  /* `.marca` é o "implausível" ao lado do número na tabela de série. Ficou de
+     fora da primeira folha de impressão e imprimia em ROXO CLARO — a cor do
+     tema escuro, porque `prefers-color-scheme` continua reportando a
+     preferência do sistema ao imprimir. 2,23:1 no papel.
+     Achado pelo modo `print` da auditoria, em 04/09/2026. */
+  .marca {
     color: #000 !important;
   }
 

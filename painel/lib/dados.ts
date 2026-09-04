@@ -188,3 +188,27 @@ export function valorDoIndicador(
 export function milReaisParaReais(v: number | null | undefined): number | null {
   return v === null || v === undefined ? null : v * 1000;
 }
+
+/**
+ * Monta a descrição dentro do limite útil, **descartando a cauda em vez de
+ * cortá-la**.
+ *
+ * ~155 caracteres é onde o Google trunca o trecho no resultado de busca. A
+ * primeira versão disto cortava no meio da palavra e terminava com reticências
+ * — "do Tesouro Nacional e do…" —, o que parece erro e desperdiça o pouco
+ * espaço que sobrava.
+ *
+ * Aqui a frase de procedência é **opcional**: entra se couber inteira, e some
+ * se não couber. Ela é a parte com menos valor de diferenciação (é idêntica em
+ * todas as páginas) e a que, portanto, deve ceder primeiro.
+ *
+ * Mora aqui, e não na página, porque a de estado precisa dela pelo mesmo
+ * motivo — e enquanto esteve numa só, a outra cortava no meio da palavra.
+ */
+export function descricaoDe(principal: string, cauda: string, limite = 155): string {
+  const inteira = `${principal} ${cauda}`;
+  if (inteira.length <= limite) return inteira;
+  if (principal.length <= limite) return principal;
+  const corte = principal.lastIndexOf(" ", limite - 1);
+  return `${principal.slice(0, corte > 0 ? corte : limite - 1)}…`;
+}

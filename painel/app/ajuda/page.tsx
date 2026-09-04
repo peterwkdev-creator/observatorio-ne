@@ -58,6 +58,23 @@ export default async function PaginaAjuda() {
   const quadrimestre = `${fiscal.periodo}º quadrimestre de ${fiscal.exercicio}`;
   const f = fiscal.funcoes;
 
+  // O efeito real dos implausíveis sobre a média nacional, CALCULADO.
+  //
+  // A frase aqui dizia que "um valor de 371% entre mil e quatrocentos puxa a
+  // média quase um ponto inteiro" — conta feita quando só o Nordeste estava
+  // varrido, e falsa depois: um valor entre 3.244 desloca 0,10 ponto. Número
+  // cravado em prosa vira mentira na coleta seguinte, e ninguém revisa a
+  // página de ajuda. Agora sai da conta.
+  const declarados = fiscal.municipios
+    .map((m) => m[5])
+    .filter((v): v is number => typeof v === "number");
+  const plausiveis = declarados.filter((v) => v > 0 && v <= 100);
+  const implausiveis = declarados.length - plausiveis.length;
+  const medi = (v: number[]) => v.reduce((s, x) => s + x, 0) / (v.length || 1);
+  const deslocamento = plausiveis.length
+    ? medi(declarados) - medi(plausiveis)
+    : 0;
+
   // `WebPage`, e deliberadamente NÃO `FAQPage`.
   //
   // A página tem treze perguntas e responderia ao formato, mas o `FAQPage`
@@ -141,6 +158,28 @@ export default async function PaginaAjuda() {
           passa a mentir sem que ninguém perceba. O travessão é a recusa a
           fazer isso.
         </p>
+        <p>
+          <strong>Mas nem todo travessão quer dizer a mesma coisa</strong>, e o
+          site diz qual é qual em vez de juntar os três:
+        </p>
+        <ul className={estilos.lista}>
+          <li>
+            <strong>Sem relatório entregue</strong> — perguntamos, e o
+            município não publicou. É afirmação sobre ele.
+          </li>
+          <li>
+            <strong>Ainda não consultado</strong> — nós é que ainda não
+            perguntamos. É afirmação sobre nós, e some quando a coleta fecha.
+          </li>
+          <li>
+            <strong>Presta contas como estado</strong> — o ente entrega o
+            relatório, só que na esfera estadual. É o caso do{" "}
+            <strong>Distrito Federal</strong>, que a estatística conta como
+            município mas que não é um: ele publica o Relatório de Gestão
+            Fiscal como estado. Marcá-lo como “não entregou” seria acusar de
+            não prestar contas quem presta.
+          </li>
+        </ul>
       </section>
 
       <section className={estilos.bloco} id="pessoal">
@@ -194,9 +233,13 @@ export default async function PaginaAjuda() {
         <p>
           Eles continuam sendo exibidos, e marcados. Corrigir seria inventar
           número; esconder seria escolher quais declarações você pode ver. Mas
-          eles <strong>ficam fora das médias</strong> e das frases de tendência
-          — um valor de 371% entre mil e quatrocentos puxa a média quase um
-          ponto inteiro.
+          eles <strong>ficam fora das médias</strong> e das frases de
+          tendência, e o motivo é medido: são{" "}
+          <strong>{br(implausiveis)}</strong> declarações fora da faixa de 0 a
+          100% entre as {br(declarados.length)} entregues, e juntas elas puxam
+          a média nacional em <strong>{br(deslocamento, 2)} ponto</strong>
+          {deslocamento >= 2 ? "s" : ""} — de {br(medi(plausiveis), 2)}% para{" "}
+          {br(medi(declarados), 2)}%.
         </p>
       </section>
 
@@ -386,8 +429,15 @@ export default async function PaginaAjuda() {
         </p>
         <ul className={estilos.lista}>
           <li>
-            <a href="/dados/municipios.csv" download>Base completa</a> — os{" "}
-            {br(total)} municípios, uma linha cada.
+            <a href="/dados/municipios.xlsx" download>
+              Base completa em planilha do Excel
+            </a>{" "}
+            — os {br(total)} municípios, com três abas: os dados, o que
+            significa cada coluna, e de onde cada número veio.
+          </li>
+          <li>
+            <a href="/dados/municipios.csv" download>A mesma base em CSV</a> —
+            para quem vai ler por programa.
           </li>
           <li>
             <strong>Por estado</strong> — o link está no fim de cada página de

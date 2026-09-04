@@ -51,9 +51,16 @@ export async function GET() {
       f?.limitePrudencial ?? null,
       // `publicou` distingue "não entregou" de "não consultado", e essa
       // diferença tem de sobreviver ao download. Vazio seria as duas coisas.
-      f?.publicou === null || f?.publicou === undefined
-        ? "nao_consultado"
-        : f.publicou ? "sim" : "nao",
+      //
+      // E há um terceiro caso, que era publicado como `nao`: quem presta
+      // contas COMO ESTADO. Escrever `nao` ali é afirmar que o ente não
+      // prestou contas — falso, e num arquivo que viaja sem a explicação da
+      // página, o que é pior que na tela. Ver `PRESTA_COMO_ESTADO`.
+      f?.faixa === "como-estado"
+        ? "presta_contas_como_estado"
+        : f?.publicou === null || f?.publicou === undefined
+          ? "nao_consultado"
+          : f.publicou ? "sim" : "nao",
       fiscal.exercicio, fiscal.periodo,
       fn?.total ?? null,
       acha(fn, "Educação"),

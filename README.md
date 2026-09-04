@@ -2,21 +2,25 @@
 
 **Live at [www.numerospublicos.com.br](https://www.numerospublicos.com.br).**
 
-Open data on the **1,794 municipalities of Brazil's Northeast region** —
-ingested from official IBGE public APIs, stored with full provenance, joined to
-municipal fiscal filings from the National Treasury, and published as **one
-static page per municipality**.
+Open data on **all 5,571 Brazilian municipalities** — ingested from official
+IBGE public APIs, stored with full provenance, joined to municipal fiscal
+filings from the National Treasury and to school results from INEP, and
+published as **one static page per municipality**.
+
+It started as a regional observatory for the Northeast (1,794 municipalities);
+the national cut was always a flag, so the expansion was one command — and the
+five latent defects it exposed are written up in the design notes below.
 
 > **Status: published and scheduled.** Every figure is ingested from a live API,
 > idempotent, cross-checked against IBGE's own regional aggregate, and rebuilt
 > weekly by a GitHub Actions job that commits only when the data actually
 > changed.
 
-**1,794 indexable pages, not one.** The whole site used to be a single URL
-holding 1,794 municipalities of data behind a filter — which meant nobody
-searching for a specific town could ever reach it. Each municipality now has
-its own address, title, description and canonical, carrying population, GDP and
-personnel spending against the legal limit, joined by the shared IBGE code.
+**5,571 indexable pages, not one.** The whole site used to be a single URL
+holding every municipality behind a filter — which meant nobody searching for a
+specific town could ever reach it. Each municipality now has its own address,
+title, description and canonical, carrying population, GDP, personnel spending
+against the legal limit and the school index, joined by the shared IBGE code.
 
 The fiscal half comes from [painel-fiscal-ne](https://github.com/peterwkdev-creator/painel-fiscal-ne),
 handed over as a versioned snapshot rather than fetched at build time: a build
@@ -87,13 +91,39 @@ python -m observatorio exportar     # writes painel/dados/snapshot.json
 cd painel && npm install && npm run build
 ```
 
-Next.js 15 + React 19 + TypeScript, **fully static** (`output: "export"`) — no
+Next.js 16 + React 19 + TypeScript, **fully static** (`output: "export"`) — no
 server, no serverless function, no runtime data fetching. The build reads the
-JSON snapshot from disk and emits HTML that already contains every number:
-**2.1 kB per page, 104 kB of JS total.**
+JSON snapshot from disk and emits HTML that already contains every number.
+5,571 municipality pages plus 27 state pages build in **40 seconds**.
 
 The one client component is the municipality table, because searching and
-sorting 1,794 rows is the only thing here that genuinely needs JavaScript.
+sorting 5,571 rows is the only thing here that genuinely needs JavaScript.
+
+### Checking the build
+
+Three commands, each verifying something the others cannot:
+
+```bash
+npm test           # the pure libraries: distribution maths, spreadsheet format
+npm run typecheck  # tsc --noEmit
+npm run auditar    # accessibility and SEO, against the GENERATED HTML
+```
+
+`npm test` uses the Node test runner over TypeScript that Node itself strips —
+**no test dependency**. `npm run auditar` needs `npm run build` and the output
+served on `:8791`; it drives a real browser through every page in **both colour
+themes**, because a contrast bug that only exists in light mode is invisible to
+a checker that only ever renders dark.
+
+```bash
+npm run conferir-xlsx   # opens the generated spreadsheet in LibreOffice
+```
+
+The `.xlsx` writer builds a ZIP of XML by hand, and a format error there raises
+no exception — it produces a file Excel refuses to open. So the check hands the
+file to LibreOffice, an independent implementation, converts it back to CSV and
+compares the values. Requires LibreOffice on the PATH (or `SOFFICE=` pointing
+at it).
 
 **No CSS framework**, by decision: design tokens as custom properties plus CSS
 Modules. One less dependency, and real control over typography — including
@@ -104,6 +134,37 @@ comparing values becomes work.
 `<th scope>`, sortable headers as actual `<button>`s (focus and keyboard for
 free), `aria-sort` only on the active column, and `prefers-reduced-motion`
 honoured.
+
+## Every number is downloadable
+
+A public-data panel that only lets you *look* is half a panel: a number nobody
+can download is a number nobody can contest. Every figure ships in three shapes,
+generated at build time as static files — no server, no API.
+
+| File | Shape | For |
+|---|---|---|
+| `/dados/municipios.xlsx` | three sheets | anyone who opens spreadsheets |
+| `/dados/municipios.csv` | wide, one row per municipality | anyone reading it by program |
+| `/municipio/<slug>/dados.csv` | long, one observation per row | one town at a time |
+
+**The CSVs use `;` and decimal commas, with a UTF-8 BOM.** Not pedantry: this
+site's readers open Excel in a pt-BR locale, where a "standard" CSV lands
+entirely in one column and, without the BOM, `Município` renders as `MunicÃ­pio`.
+
+**The spreadsheet carries two sheets the CSV cannot.** One says what each column
+means; the other says where each number came from and when it was collected. In
+a CSV those would have to become a second file nobody downloads alongside the
+first — and a number without provenance is exactly what this site exists not to
+produce.
+
+**An empty cell means ABSENT, never zero**, and that survives the download:
+`pessoal_publicou` is `sim`/`nao`/`nao_consultado`, never blank. Collapsing "did
+not file" into "we did not ask" would erase the distinction the whole panel is
+built to keep.
+
+The `.xlsx` is written without a dependency — the format is a ZIP of XML, and
+Node ships `deflateRawSync` but no packer. That choice buys a verification
+obligation, met by `npm run conferir-xlsx` above.
 
 ## Design notes
 
@@ -120,7 +181,8 @@ worthless in an observatory — that is what separates this from a scraper.
 with a different value becomes another row, never a silent overwrite.
 
 **Idempotent by construction.** Running twice changes nothing: proven in tests
-and against the live API (second run: 0 new, 1,794 already known).
+and against the live API (second run: 0 new, every municipality already
+known).
 
 **Failure is expected, not exceptional.** The transport returns a status instead
 of raising on network failure, so retry policy is actually consulted; a socket

@@ -49,14 +49,29 @@ let achados = 0;
  * Rodar as duas mesmo assim custa segundos e evita a pergunta "será que este
  * achado é dos dois?".
  */
-const TEMAS = ["light", "dark"];
+/**
+ * Os três modos em que a página existe de verdade.
+ *
+ * `print` entrou em 04/09/2026, e não por completude: as cores das faixas
+ * fiscais moram dentro de `@media (prefers-color-scheme: dark)` nos módulos
+ * CSS, e `prefers-color-scheme` **continua reportando a preferência do sistema
+ * ao imprimir** — então a impressão saía com as cores do tema escuro, ilegível
+ * no papel, e nenhuma das duas passadas de tela via isso.
+ *
+ * Auditar dois modos e ter três é auditar dois terços dizendo "conferido".
+ */
+const TEMAS = ["light", "dark", "print"];
 
 for (const caminho of caminhos) {
  for (const tema of TEMAS) {
   const p = await nav.newPage();
+  // No modo `print` a preferência de tema fica em `dark` DE PROPÓSITO: é o
+  // caso que mordeu. Se a folha de impressão não sobrescrever as cores, o
+  // critério de contraste reprova aqui — que é exatamente o que se quer.
   await p.emulateMediaFeatures([
-    { name: "prefers-color-scheme", value: tema },
+    { name: "prefers-color-scheme", value: tema === "print" ? "dark" : tema },
   ]);
+  if (tema === "print") await p.emulateMediaType("print");
   const recursos = [];
   p.on("response", async (r) => {
     try {
@@ -69,9 +84,45 @@ for (const caminho of caminhos) {
   await p.setViewport({ width: 1280, height: 900 });
   await p.goto(base + caminho, { waitUntil: "networkidle0", timeout: 40000 });
 
+  // ---- ABRIR A BUSCA ANTES DE AUDITAR --------------------------------
+  //
+  // A auditoria inspecionava só o HTML como ele chega, e por isso declarava
+  // "sem achados" numa página cujo componente principal do cabeçalho tem o
+  // estado que importa — a lista de resultados — escondido no carregamento.
+  // Contraste da opção destacada, `aria-activedescendant`, altura de alvo das
+  // opções: nada disso existia no DOM que ela lia.
+  //
+  // Aqui a busca é digitada de verdade e a lista aberta, então todo critério
+  // abaixo passa a valer também para ela. Escrito em 04/09/2026, depois de
+  // conferir esses contrastes à mão e perceber que a auditoria nunca os veria.
+  await p.evaluate(async () => {
+    const c = document.querySelector("[role=combobox]");
+    if (!c) return;
+    const d = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(c), "value",
+    );
+    c.focus();
+    d.set.call(c, "sao");
+    c.dispatchEvent(new Event("input", { bubbles: true }));
+    // O índice chega por `fetch`: sem esperar, a lista ainda está vazia e a
+    // auditoria voltaria a não ver nada — passando, de novo, por não olhar.
+    for (let i = 0; i < 40; i += 1) {
+      const lb = document.querySelector("[role=listbox]");
+      if (lb && !lb.hidden && lb.querySelector("[role=option]")) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    c.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "ArrowDown", bubbles: true,
+    }));
+  });
+  await new Promise((r) => setTimeout(r, 400));
+
   const r = await p.evaluate(() => {
     const ids = {};
     for (const e of document.querySelectorAll("[id]")) ids[e.id] = (ids[e.id] || 0) + 1;
+    const lbBusca = document.querySelector("[role=listbox]");
+    const buscaNaoAbriu = !!document.querySelector("[role=combobox]") &&
+      (!lbBusca || lbBusca.hidden || !lbBusca.querySelector("[role=option]"));
 
     const alvos = [...document.querySelectorAll("a[href],button,input,select")]
       .map((e) => ({ e, b: e.getBoundingClientRect() }))
@@ -186,7 +237,7 @@ for (const caminho of caminhos) {
       descQuebrados: [...document.querySelectorAll("[aria-describedby]")]
         .map((e) => e.getAttribute("aria-describedby"))
         .filter((id) => !document.getElementById(id)),
-      saltos, pequenos, tipos, semContraste,
+      saltos, pequenos, tipos, semContraste, buscaNaoAbriu,
       h1: document.querySelectorAll("h1").length,
       navSemRotulo: [...document.querySelectorAll("nav")]
         .filter((n) => !n.getAttribute("aria-label") && !n.getAttribute("aria-labelledby")).length,
@@ -239,7 +290,13 @@ for (const caminho of caminhos) {
   flag(r.pequenos.length, `alvo < 24px sem exceção: ${JSON.stringify(r.pequenos)}`);
   flag(r.semContraste.length,
     `contraste abaixo do mínimo (WCAG 1.4.3 AA): ${JSON.stringify(r.semContraste.slice(0, 6))}`);
-  flag(r.rolaHorizontal, "rolagem horizontal");
+  flag(tema !== "print" && r.rolaHorizontal, "rolagem horizontal");
+  // Sentinela: se a lista não abriu, os critérios acima não a examinaram — e
+  // um "sem achados" que não olhou é pior que um achado.
+  // No papel a busca é ocultada de propósito (controle não se imprime), então
+  // o sentinela não se aplica — cobrá-lo ali reprovaria o comportamento certo.
+  flag(tema !== "print" && r.buscaNaoAbriu,
+    "a busca do cabeçalho não abriu: os critérios não a examinaram");
   flag(!r.tipos.length && !r.noindex, "sem JSON-LD");
   flag(r.titulo > 60, `title com ${r.titulo}ch (o Google corta perto de 60)`);
   flag(r.descricao > 160, `description com ${r.descricao}ch (o Google corta perto de 160)`);

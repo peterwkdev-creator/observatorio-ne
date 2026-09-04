@@ -1,0 +1,174 @@
+/* A busca do cabeçalho. Ver a nota de desenho em `busca-cabecalho.tsx`. */
+
+.raiz {
+  display: block;
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 22rem;
+}
+
+.caixa {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.lupa {
+  position: absolute;
+  left: 0.5rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--tinta-fraca);
+  pointer-events: none;
+}
+
+.campo {
+  width: 100%;
+  /* 2.5rem à esquerda abre espaço para a lupa sem que ela sobreponha o texto
+     digitado — o defeito clássico deste layout. */
+  padding: 0.4rem 0.6rem 0.4rem 2rem;
+  /* 2.25rem = 36px de altura de alvo. O critério 2.5.8 do WCAG pede 24px, e
+     campo de texto nem entra na conta; a folga é para o dedo, não para a
+     norma. */
+  min-height: 2.25rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--tinta);
+  background: var(--fundo);
+  border: 1px solid var(--borda-forte);
+  border-radius: 0.25rem;
+}
+
+.campo::placeholder {
+  color: var(--tinta-fraca);
+  /* O placeholder some ao focar: ele é rótulo de reserva, e mantê-lo enquanto
+     se digita não ajuda ninguém. O rótulo de verdade está no `.so-leitor`. */
+  opacity: 1;
+}
+
+.campo:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+.lista {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--fundo);
+  border: 1px solid var(--borda-forte);
+  border-radius: 0.25rem;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.14);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.lista li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  /* 2.25rem de altura por opção: alvo confortável de toque, e a lista de 8
+     ainda cabe na tela de um telefone. */
+  min-height: 2.25rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.ativa {
+  background: var(--acento);
+  color: var(--fundo);
+}
+
+/* A opção destacada não se distingue SÓ pela cor — o critério 1.4.1 do WCAG.
+   A barra à esquerda sobrevive a daltonismo e a alto contraste forçado. */
+.ativa::before {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  width: 3px;
+  height: 1.5rem;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.lista li {
+  position: relative;
+}
+
+.ativa .uf {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uf {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--tinta-fraca);
+  font-variant-numeric: tabular-nums;
+}
+
+.vazio {
+  cursor: default;
+  color: var(--tinta-fraca);
+  font-style: italic;
+}
+
+.erro {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8125rem;
+  background: var(--fundo);
+  border: 1px solid var(--borda-forte);
+  border-radius: 0.25rem;
+}
+
+/* Em tela estreita a busca ocupa a linha inteira, abaixo da marca. Espremê-la
+   ao lado dos atalhos deixaria o campo com menos de 8 caracteres visíveis, o
+   que é pior que não tê-la. */
+@media (max-width: 30rem) {
+  .raiz {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
+/* Alto contraste forçado descarta `background`: sem isto, a opção destacada
+   ficaria indistinguível das demais. */
+@media (forced-colors: active) {
+  .ativa {
+    background: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+  .lista {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* No papel a busca não existe: é controle, não conteúdo. */
+@media print {
+  .raiz {
+    display: none;
+  }
+}

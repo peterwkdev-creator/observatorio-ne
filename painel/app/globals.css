@@ -196,7 +196,10 @@ p, li {
 .barra-site {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  /* `center` e não `baseline`: com o campo de busca na barra, alinhar pela
+     linha de base do texto deixaria o campo pendurado uns pixels acima dos
+     links, e o desalinhamento salta aos olhos justamente no elemento maior. */
+  align-items: center;
   justify-content: space-between;
   gap: var(--e-2) var(--e-4);
   max-width: var(--largura-max);

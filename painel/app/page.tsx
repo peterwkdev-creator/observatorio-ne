@@ -2,6 +2,9 @@ import Link from "next/link";
 
 import { br, dataLegivel, expandir, valorDoIndicador } from "@/lib/dados";
 import { slugUf } from "@/lib/estado";
+import { faixasEmLinha } from "@/lib/fiscal";
+import { funcoesDoPais, panoramaEstados } from "@/lib/nacional";
+import FuncoesBarras from "./componentes/funcoes-barras";
 import { coberturaTemporal, idCatalogo, palavrasChave, VARIAVEIS } from "@/lib/jsonld";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "@/lib/servidor";
 import { Municipios } from "./municipios";
@@ -30,6 +33,9 @@ export default async function Pagina() {
   // `Dataset`; a capa, que é a raiz do site e a que o Google encontra primeiro,
   // não declarava nada -- então o buscador via 1.804 conjuntos de dados sem um
   // que os agrupasse. `hasPart` faz esse papel.
+  const pais = funcoesDoPais(fiscal);
+  const estados = panoramaEstados(fiscal);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -86,6 +92,13 @@ export default async function Pagina() {
         },
         variableMeasured: VARIAVEIS,
         distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            contentUrl: `${SITE}/dados/municipios.xlsx`,
+            name: "Base completa em planilha, com dicionário e procedência",
+          },
           {
             "@type": "DataDownload",
             encodingFormat: "text/csv",
@@ -160,6 +173,42 @@ export default async function Pagina() {
         ))}
       </section>
 
+      {/* A capa listava indicadores e estados, e não respondia "para onde vai
+          o dinheiro" — a pergunta que a página do município e a do estado já
+          respondiam. O dado estava no disco desde que a varredura nacional
+          fechou. Ver a nota de desenho em `lib/nacional.ts`. */}
+      {pais && (
+        <section className={s.secao} aria-labelledby="para-onde">
+          <h2 className={s.secaoTitulo} id="para-onde">
+            Para onde vai o dinheiro
+          </h2>
+          <p className={s.secaoNota}>
+            Despesa <strong>liquidada</strong> — o que de fato foi gasto, não o
+            orçado nem o empenhado — acumulada até o {pais.periodo}º bimestre de{" "}
+            {pais.exercicio}, somada nos{" "}
+            <strong>{br(pais.municipios)}</strong> municípios que entregaram o
+            relatório.
+          </p>
+
+          <FuncoesBarras
+            fatias={pais.fatias}
+            total={pais.total}
+            municipio={`${br(pais.municipios)} municípios do Brasil`}
+          />
+
+          {/* A ressalva vai junto do número, não num rodapé. Chamar isto de
+              "gasto dos municípios brasileiros" erra por quase metade, e a
+              distância entre a soma e essa frase é exatamente esta. */}
+          <p className={s.secaoNota}>
+            <strong>Isto não é o gasto dos municípios brasileiros.</strong> É o
+            dos <strong>{br(pais.municipios)}</strong> que publicaram o
+            relatório — {br((pais.municipios * 100) / municipios.length, 0)}% dos{" "}
+            {br(municipios.length)}. Os outros não aparecem aqui porque não há
+            número deles, e somar zero por eles seria inventar um.
+          </p>
+        </section>
+      )}
+
       <section className={s.secao} aria-labelledby="por-estado">
         <h2 className={s.secaoTitulo} id="por-estado">
           Por estado
@@ -181,6 +230,16 @@ export default async function Pagina() {
                 <th scope="col">Estado</th>
                 <th scope="col" className={s.numero}>
                   Municípios
+                </th>
+                {/* A taxa de entrega entra AQUI, e não numa seção própria:
+                    esta tabela já é onde os 27 se comparam, e o achado — a
+                    entrega varia de 14% a 100% sem padrão regional — só se lê
+                    como achado quando os estados estão lado a lado. Agrupada
+                    por região, a tabela ainda desmente sozinha a leitura
+                    regional que a taxa convida a fazer. */}
+                <th scope="col" className={s.numero}>
+                  Entregaram o relatório{" "}
+                  <span className={s.ausente}>(%)</span>
                 </th>
                 {snapshot.indicadores.map((i) => (
 <th key={i.codigo} scope="col" className={s.numero}>
@@ -205,7 +264,7 @@ export default async function Pagina() {
             {REGIOES.map((regiao) => (
               <tbody key={regiao}>
                 <tr>
-                  <th scope="colgroup" colSpan={2 + snapshot.indicadores.length}
+                  <th scope="colgroup" colSpan={3 + snapshot.indicadores.length}
                       className={s.grupo}>
                     {regiao}
                   </th>
@@ -222,6 +281,25 @@ export default async function Pagina() {
                   </th>
                   <td className={`${s.numero} tabular`}>
                     {br(uf.municipios)}
+                  </td>
+                  <td className={`${s.numero} tabular`}>
+                    {(() => {
+                      const e = estados.find((x) => x.uf === uf.sigla);
+                      // Sem linha no panorama a célula fica em travessão, e o
+                      // título explica por quê: é o Distrito Federal, que não
+                      // entrega como município porque não é um.
+                      if (!e) {
+                        return (
+                          <span
+                            className={s.ausente}
+                            title="Presta contas como estado, não como município"
+                          >
+                            —
+                          </span>
+                        );
+                      }
+                      return `${br(e.taxa, 0)}%`;
+                    })()}
                   </td>
                   {snapshot.indicadores.map((i) => (
                     <td
@@ -241,7 +319,11 @@ export default async function Pagina() {
         </div>
       </section>
 
-      <Municipios linhas={snapshot.municipios} indicadores={snapshot.indicadores} />
+      <Municipios
+        linhas={snapshot.municipios}
+        indicadores={snapshot.indicadores}
+        faixas={faixasEmLinha(snapshot.municipios, fiscal)}
+      />
 
       <footer className={s.rodape}>
         <p>

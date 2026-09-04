@@ -239,6 +239,12 @@
 .faixas li.nao-consultado {
   border-left: 3px dotted var(--borda-forte);
 }
+/* Nem alerta nem ausência: o ente presta contas, na esfera dele. Traço-ponto,
+   que nenhuma outra faixa usa, e nenhuma cor da escala de alerta. */
+.faixas li.como-estado {
+  border-left: 3px dashed var(--borda-forte);
+  border-left-style: dashed;
+}
 
 
 .rolagem {
@@ -309,6 +315,7 @@
 .lista .implausivel { background: #f1eef7; color: #4c3d66; }
 .lista .sem-dado { background: transparent; color: var(--tinta-fraca); }
 .lista .nao-consultado { background: transparent; color: var(--tinta-fraca); font-style: italic; }
+.lista .como-estado { background: transparent; color: var(--tinta-fraca); font-style: italic; }
 
 @media (prefers-color-scheme: dark) {
   .lista .acima-legal { background: #35201b; color: #f0a693; }
@@ -416,6 +423,19 @@
   border-left-style: dotted;
 }
 
+.como-estado {
+  border-left-width: 3px;
+  border-left-style: dashed;
+}
+.como-estado .valor {
+  color: var(--tinta-fraca);
+}
+.como-estado .selo {
+  background: transparent;
+  color: var(--tinta-fraca);
+  font-style: italic;
+}
+
 /* ---- impressão -------------------------------------------------------
 
    As cores de faixa acima são fixas no módulo, com uma variante dentro de
@@ -432,7 +452,8 @@
   .acima-prudencial,
   .abaixo,
   .sem-dado,
-  .nao-consultado {
+  .nao-consultado,
+  .como-estado {
     border-left-color: #000 !important;
   }
 
@@ -441,7 +462,8 @@
   .acima-prudencial .valor,
   .abaixo .valor,
   .sem-dado .valor,
-  .nao-consultado .valor {
+  .nao-consultado .valor,
+  .como-estado .valor {
     color: #000 !important;
   }
 
@@ -451,7 +473,8 @@
   .acima-prudencial .selo,
   .abaixo .selo,
   .sem-dado .selo,
-  .nao-consultado .selo {
+  .nao-consultado .selo,
+  .como-estado .selo {
     background: transparent !important;
     color: #000 !important;
     border: 1px solid #000;
@@ -462,7 +485,8 @@
   .lista .abaixo,
   .lista .implausivel,
   .lista .sem-dado,
-  .lista .nao-consultado {
+  .lista .nao-consultado,
+  .lista .como-estado {
     background: transparent !important;
     color: #000 !important;
   }
@@ -472,5 +496,29 @@
   .barra,
   .trilho {
     display: none !important;
+  }
+}
+
+/* ---- comparação com o país -------------------------------------------
+   Mesmas medidas da página de município: o gráfico é complemento do texto,
+   não substituto, então respeita a mesma largura de leitura. */
+
+.grafico {
+  max-width: 34rem;
+  margin: 0 0 var(--e-6);
+  padding: var(--e-3) 0;
+  border-bottom: 1px solid var(--borda);
+}
+
+.subtitulo {
+  font-size: var(--texto-base);
+  margin: var(--e-6) 0 var(--e-2);
+}
+
+/* A tira sobrevive ao papel: são pontos e traços, não cor de alerta, então
+   basta garantir que o destaque não vire cinza igual aos demais. */
+@media print {
+  .grafico {
+    break-inside: avoid;
   }
 }

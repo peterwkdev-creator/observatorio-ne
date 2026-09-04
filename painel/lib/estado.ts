@@ -47,6 +47,27 @@ export type ResumoEstado = {
   mediaPessoal: number | null;
   /** Quantos entraram na média acima. Sem isto ela é um número sem lastro. */
   baseMedia: number;
+  /**
+   * Quantos municípios do estado **entregaram** o relatório fiscal.
+   *
+   * É o denominador de qualquer contagem sobre limite legal, e não o total de
+   * municípios do estado. A diferença não é cosmética: no Rio Grande do Sul,
+   * 75 dos 497 entregaram, então "7 de 497 acima do limite" convida a ler que
+   * 490 estão bem — quando 422 deles apenas não prestaram contas. Isso
+   * **colapsa "não entregou" em "está dentro"**, que é a distinção que este
+   * painel inteiro existe para manter.
+   *
+   * Ficou invisível enquanto só o Nordeste estava varrido, onde 78% entregam.
+   * A varredura nacional trouxe estados com 14%, e aí o erro salta.
+   */
+  publicaram: number;
+  /**
+   * Quantos entes do estado prestam contas como estado, e não como município.
+   *
+   * Só o Distrito Federal, hoje. Sai da conta de "não entregaram": ele entrega,
+   * na esfera onde de fato presta contas. Ver `PRESTA_COMO_ESTADO`.
+   */
+  comoEstado: number;
   /** A despesa por função somada no estado, da maior para a menor. */
   funcoes: { total: number; fatias: FatiaFuncao[]; municipios: number } | null;
 };
@@ -58,6 +79,7 @@ const FAIXAS_ZERADAS = (): Record<Faixa, number> => ({
   abaixo: 0,
   "sem-dado": 0,
   "nao-consultado": 0,
+  "como-estado": 0,
 });
 
 export function resumirEstado(
@@ -73,7 +95,8 @@ export function resumirEstado(
     fiscal.municipios.map(([codigo, , , , publicou, percentual,
       limitePrudencial, despesa, rclAjustada]) => [codigo, {
       publicou, percentual, limitePrudencial, despesa, rclAjustada,
-      faixa: faixaDe(percentual, limitePrudencial, fiscal.limites, publicou),
+      faixa: faixaDe(percentual, limitePrudencial, fiscal.limites, publicou,
+                     codigo),
     } satisfies Fiscal]),
   );
 
@@ -110,6 +133,9 @@ export function resumirEstado(
     porFaixa,
     mediaPessoal,
     baseMedia: plausiveis.length,
+    publicaram: municipios.filter((m) => m.fiscal?.publicou).length,
+    comoEstado: municipios.filter(
+      (m) => m.fiscal?.faixa === "como-estado").length,
     funcoes: somarFuncoes(fiscal, municipios),
   };
 }

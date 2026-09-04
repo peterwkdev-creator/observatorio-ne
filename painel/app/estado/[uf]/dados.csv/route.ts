@@ -53,11 +53,15 @@ export async function GET(
       ...indicadores.map((i) => m.valores[i.codigo] ?? null),
       m.fiscal?.percentual ?? null,
       m.fiscal?.limitePrudencial ?? null,
-      // A mesma distinção da base completa: "não entregou" e "não consultado"
-      // não podem colapsar num campo vazio, que seria as duas coisas.
-      m.fiscal?.publicou === null || m.fiscal?.publicou === undefined
-        ? "nao_consultado"
-        : m.fiscal.publicou ? "sim" : "nao",
+      // A mesma distinção da base completa: "não entregou", "não consultado" e
+      // "presta contas como estado" não podem colapsar num campo vazio nem
+      // num `nao` — o último seria acusar de não prestar contas quem presta,
+      // num arquivo que viaja sem a explicação da página.
+      m.fiscal?.faixa === "como-estado"
+        ? "presta_contas_como_estado"
+        : m.fiscal?.publicou === null || m.fiscal?.publicou === undefined
+          ? "nao_consultado"
+          : m.fiscal.publicou ? "sim" : "nao",
       fiscal.exercicio, fiscal.periodo,
       fn?.total ?? null,
       acha(fn, "Educação"),

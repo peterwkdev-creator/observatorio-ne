@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { br, escala, expandir, milReaisParaReais } from "../../../lib/dados";
+import { br, descricaoDe, escala, expandir, milReaisParaReais } from "../../../lib/dados";
 import { slugUf, vizinhosDe } from "../../../lib/estado";
+import { posicaoEntre } from "../../../lib/posicao";
 import {
   coberturaTemporal, identificadorIbge, idCatalogo, palavrasChave, VARIAVEIS,
 } from "../../../lib/jsonld";
@@ -14,16 +15,17 @@ import {
 import { contarMetas, medianaGeral, trajetoriaDe } from "../../../lib/ideb";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import FuncoesBarras from "../../componentes/funcoes-barras";
+import DistribuicaoSvg from "../../componentes/distribuicao-svg";
 import IdebSvg from "../../componentes/ideb-svg";
 import Termo from "../../componentes/termo";
 import SerieSvg from "./serie-svg";
 import estilos from "./municipio.module.css";
 
 /**
- * Uma página por município — 1.794 delas, geradas no build.
+ * Uma página por município — 5.571 delas, geradas no build.
  *
  * Existe por uma razão medida: o site inteiro tinha **uma** URL indexável, com
- * 1.794 municípios de dado dentro. Quem procura "gasto com pessoal prefeitura
+ * todos os municípios de dado dentro. Quem procura "gasto com pessoal prefeitura
  * de Imperatriz" nunca ia chegar a uma tabela que exige rolar e filtrar. Cada
  * município agora tem endereço próprio, título próprio e o dado dos dois
  * sistemas junto — que é o que nenhuma das duas fontes originais oferece.
@@ -47,26 +49,6 @@ export async function generateStaticParams() {
   return municipios.map((m) => ({ slug: m.slug }));
 }
 
-/**
- * Monta a descrição dentro do limite útil, **descartando a cauda em vez de
- * cortá-la**.
- *
- * ~155 caracteres é onde o Google trunca o trecho no resultado de busca. A
- * primeira versão disto cortava no meio da palavra e terminava com reticências
- * — "do Tesouro Nacional e do…" —, o que parece erro e desperdiça o pouco
- * espaço que sobrava.
- *
- * Aqui a frase de procedência é **opcional**: entra se couber inteira, e some
- * se não couber. Ela é a parte com menos valor de diferenciação (é idêntica em
- * 1.794 páginas) e a que, portanto, deve ceder primeiro.
- */
-function descricaoDe(principal: string, cauda: string, limite = 155): string {
-  const inteira = `${principal} ${cauda}`;
-  if (inteira.length <= limite) return inteira;
-  if (principal.length <= limite) return principal;
-  const corte = principal.lastIndexOf(" ", limite - 1);
-  return `${principal.slice(0, corte > 0 ? corte : limite - 1)}…`;
-}
 
 /**
  * O `<title>`, dentro do que o Google mostra.
@@ -142,6 +124,26 @@ export async function generateMetadata(
   };
 }
 
+/**
+ * "do Maranhão", "da Bahia", "de Alagoas".
+ *
+ * Sem regra possível: é o artigo que cada nome carrega. A tabela completa mora
+ * em `app/estado/[uf]/page.tsx`; aqui basta o caso geral e as exceções que
+ * denunciariam texto gerado.
+ */
+const ARTIGO: Record<string, string> = {
+  Alagoas: "de", Goiás: "de", Sergipe: "de", Roraima: "de", Rondônia: "de",
+  Pernambuco: "de", "Mato Grosso": "de", "Mato Grosso do Sul": "de",
+  "Minas Gerais": "de", "São Paulo": "de", "Santa Catarina": "de",
+  "Espírito Santo": "do", Bahia: "da", Paraíba: "da",
+};
+function de(estado: string): string {
+  const a = ARTIGO[estado];
+  if (a) return `${a} ${estado}`;
+  // O padrão é masculino: Maranhão, Ceará, Piauí, Paraná, Acre, Amazonas...
+  return `do ${estado}`;
+}
+
 export default async function PaginaMunicipio(
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -172,6 +174,16 @@ export default async function PaginaMunicipio(
   const perCapita = pibReais !== null && pop !== null && pop ? pibReais / pop : null;
 
   const f = m.fiscal;
+
+  // Onde este município cai entre os do seu estado. Responde a pergunta que o
+  // limite legal deixa intacta: "isso é muito?" -- um teto absoluto não diz se
+  // o município é caso isolado ou se metade do estado está no mesmo lugar, e as
+  // duas situações pedem leituras opostas da mesma porcentagem.
+  const posicao = posicaoEntre(
+    f?.percentual,
+    municipios.filter((x) => x.uf === m.uf).map((x) => x.fiscal?.percentual),
+  );
+
   const quadrimestre = `${fiscal.periodo}º quadrimestre de ${fiscal.exercicio}`;
   const serie = fiscal.serie[String(m.codigo)] ?? [];
   const delta = variacao(serie);
@@ -246,6 +258,13 @@ export default async function PaginaMunicipio(
         encodingFormat: "text/csv",
         contentUrl: `${SITE}/municipio/${m.slug}/dados.csv`,
         name: `Dados de ${m.nome} (${m.uf}) em CSV`,
+      },
+      {
+        "@type": "DataDownload",
+        encodingFormat:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        contentUrl: `${SITE}/dados/municipios.xlsx`,
+        name: "Base completa em planilha, com dicionário e procedência",
       },
       {
         "@type": "DataDownload",
@@ -363,6 +382,14 @@ export default async function PaginaMunicipio(
               >
                 {ROTULO_FAIXA["sem-dado"]}
               </Termo>
+            ) : f?.faixa === "como-estado" ? (
+              <Termo
+                ancora="como-estado"
+                bloco
+                dica="Este ente presta contas como estado, e não como município: entrega o relatório na esfera estadual, onde de fato responde. O painel cobre municípios, e por isso não há número aqui — o que falta é o recorte, não a prestação de contas."
+              >
+                {ROTULO_FAIXA["como-estado"]}
+              </Termo>
             ) : (
               ROTULO_FAIXA[f?.faixa ?? "nao-consultado"]
             )}
@@ -441,6 +468,19 @@ export default async function PaginaMunicipio(
               </>
             ) : null}
           </p>
+        ) : f?.faixa === "como-estado" ? (
+          // Não é ausência, e chamá-la assim é acusação sem lastro: o ente
+          // entrega o Anexo 01 normalmente, na esfera em que presta contas.
+          // Conferido na fonte em 04/09/2026. Ver `PRESTA_COMO_ESTADO`.
+          <p>
+            <strong>{m.nome} presta contas como estado</strong>, e não como
+            município — o Distrito Federal não é um município, e por isso não
+            entrega o Relatório de Gestão Fiscal na esfera municipal. Ele{" "}
+            <strong>entrega o relatório</strong>, na esfera estadual, e este
+            painel cobre municípios: por isso o número não aparece aqui.{" "}
+            <em>Ausência de dado municipal não é ausência de prestação de
+            contas.</em>
+          </p>
         ) : f?.publicou === false ? (
           <p>
             <strong>{m.nome} não entregou</strong> o Relatório de Gestão Fiscal
@@ -463,6 +503,48 @@ export default async function PaginaMunicipio(
           <Link href="/ajuda/#pessoal">O que é RCL ajustada?</Link>
         </p>
       </section>
+
+      {posicao && f?.percentual !== null && f?.percentual !== undefined && (
+        <section className={estilos.texto}>
+          <h2>Isso é muito?</h2>
+          <p>
+            O limite legal responde <em>se está dentro da lei</em>. Não responde
+            se {m.nome} é um caso isolado ou se boa parte do estado está no
+            mesmo lugar — e as duas situações pedem leituras opostas do mesmo
+            número.
+          </p>
+          <p>
+            Entre os <strong>{br(posicao.base)}</strong> municípios{" "}
+            {de(uf?.nome ?? m.uf)} que entregaram o relatório com valor
+            plausível, {m.nome} está{" "}
+            <strong>
+              acima de {br(posicao.percentil, 0)}%
+            </strong>{" "}
+            deles. A mediana do estado é{" "}
+            <strong>{br(posicao.mediana, 2)}%</strong>.
+          </p>
+
+          <div className={estilos.grafico}>
+            <DistribuicaoSvg
+              posicao={posicao}
+              percentual={f.percentual}
+              prudencial={f.limitePrudencial ?? fiscal.limites.prudencial}
+              legal={fiscal.limites.legal}
+              municipio={m.nome}
+              conjunto={de(uf?.nome ?? m.uf)}
+            />
+          </div>
+
+          <p className={estilos.ressalva}>
+            Entram na comparação apenas os que <strong>entregaram</strong> o
+            relatório e cujo percentual está entre 0 e 100%. Quem não entregou
+            não tem número — tratá-lo como zero o poria no fim da fila por não
+            ter prestado contas, que é o inverso da verdade. E um município que
+            declarou 371% empurraria todos os outros um degrau, por causa de um
+            erro de preenchimento.
+          </p>
+        </section>
+      )}
 
       {serie.length > 1 && (
         <section className={estilos.texto}>
@@ -880,12 +962,17 @@ export default async function PaginaMunicipio(
             </span>
           </li>
           <li>
-            <a href="/dados/municipios.csv" download>
-              Base completa em CSV
+            <a href="/dados/municipios.xlsx" download>
+              Base completa em planilha
             </a>{" "}
             <span className={estilos.fonte}>
-              — os {snapshot.municipios.length} municípios, uma linha cada
+              — os {snapshot.municipios.length} municípios, com dicionário de
+              colunas e procedência em abas separadas
             </span>
+          </li>
+          <li>
+            <a href="/dados/municipios.csv" download>A mesma base em CSV</a>{" "}
+            <span className={estilos.fonte}>— para ler por programa</span>
           </li>
         </ul>
         <p className={estilos.ressalva}>
