@@ -6,7 +6,7 @@ import { br, descricaoDe, escala, expandir, milReaisParaReais } from "../../../l
 import { slugUf, vizinhosDe } from "../../../lib/estado";
 import { posicaoEntre, posicaoNoEstado } from "../../../lib/posicao";
 import {
-  coberturaTemporal, identificadorIbge, idCatalogo, palavrasChave, VARIAVEIS,
+  FONTES, VARIAVEIS, coberturaTemporal, idCatalogo, identificadorIbge, palavrasChave,
 } from "../../../lib/jsonld";
 import {
   compararFuncoes, DESLOCAMENTO_MINIMO, FUNCOES_DA_PORTARIA, funcoesDe,
@@ -293,10 +293,7 @@ export default async function PaginaMunicipio(
         name: `Base completa: ${br(snapshot.municipios.length)} municípios`,
       },
     ],
-    isBasedOn: [
-      { "@type": "Dataset", name: "IBGE — Agregados", url: "https://servicodados.ibge.gov.br" },
-      { "@type": "Dataset", name: "SICONFI — Tesouro Nacional", url: "https://apidatalake.tesouro.gov.br" },
-    ],
+    isBasedOn: FONTES,
   };
 
   return (

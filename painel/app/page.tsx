@@ -5,7 +5,9 @@ import { slugUf } from "@/lib/estado";
 import { faixasEmLinha } from "@/lib/fiscal";
 import { funcoesDoPais, panoramaEstados } from "@/lib/nacional";
 import FuncoesBarras from "./componentes/funcoes-barras";
-import { coberturaTemporal, idCatalogo, palavrasChave, VARIAVEIS } from "@/lib/jsonld";
+import {
+  coberturaTemporal, FONTES, idCatalogo, palavrasChave, VARIAVEIS,
+} from "@/lib/jsonld";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "@/lib/servidor";
 import { Municipios } from "./municipios";
 import s from "./page.module.css";
@@ -106,11 +108,7 @@ export default async function Pagina() {
             name: `Base completa: ${municipios.length} municípios em CSV`,
           },
         ],
-        isBasedOn: [
-          { "@type": "Dataset", name: "IBGE — Agregados", url: "https://servicodados.ibge.gov.br" },
-          { "@type": "Dataset", name: "SICONFI — Tesouro Nacional", url: "https://apidatalake.tesouro.gov.br" },
-          { "@type": "Dataset", name: "INEP — IDEB", url: "https://www.gov.br/inep" },
-        ],
+        isBasedOn: FONTES,
       },
     ],
   };

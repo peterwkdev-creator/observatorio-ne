@@ -11,7 +11,7 @@ import { ROTULO_FAIXA } from "../../../lib/fiscal";
 import { medianaUltimaEdicao } from "../../../lib/ideb";
 import { panoramaEstados, posicaoNaLista } from "../../../lib/nacional";
 import {
-  coberturaTemporal, idCatalogo, palavrasChave, VARIAVEIS,
+  FONTES, VARIAVEIS, coberturaTemporal, idCatalogo, palavrasChave,
 } from "../../../lib/jsonld";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import estilos from "./estado.module.css";
@@ -194,14 +194,7 @@ export default async function PaginaEstado(
     // município e na capa; a de estado dizia de onde o dado vinha em PROSA e
     // não em metadado, e o Dataset Search lê o metadado. Também inclui o INEP,
     // que a página usa para o IDEB mediano.
-    isBasedOn: [
-      { "@type": "Dataset", name: "IBGE — Agregados",
-        url: "https://servicodados.ibge.gov.br" },
-      { "@type": "Dataset", name: "SICONFI — Tesouro Nacional",
-        url: "https://apidatalake.tesouro.gov.br" },
-      { "@type": "Dataset", name: "INEP — IDEB",
-        url: "https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb" },
-    ],
+    isBasedOn: FONTES,
     inLanguage: "pt-BR",
     creator: { "@type": "Person", name: "Peter Wilhelm Kretzschmar" },
     // Ver a nota em `municipio/[slug]/page.tsx`: campos recomendados pela

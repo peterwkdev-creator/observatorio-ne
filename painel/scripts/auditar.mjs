@@ -231,13 +231,52 @@ for (const caminho of caminhos) {
         } catch { return "JSON INVÁLIDO"; }
       });
 
+    /**
+     * Todo nó `Dataset` da página precisa de `name` e `description`.
+     *
+     * Achado em 04/09/2026 pela inspeção do Search Console, e NÃO por esta
+     * auditoria, que só conferia se havia JSON-LD. A página de município
+     * declarava **três** Datasets — o próprio e as duas fontes citadas em
+     * `isBasedOn` — e os dois últimos eram stubs sem `description`: "1 erro
+     * crítico" cada um, na leitura do Google.
+     *
+     * Presença de bloco não é validade de bloco. Este critério é a diferença.
+     */
+    const datasetsRuins = (() => {
+      const achados = [];
+      const visitar = (n) => {
+        if (Array.isArray(n)) return n.forEach(visitar);
+        if (!n || typeof n !== "object") return;
+        if (n["@type"] === "Dataset") {
+          // Um nó com só `@type` e `@id` é REFERÊNCIA a um nó definido em
+          // outro lugar, não uma definição — e referência não carrega campo.
+          // A página de ajuda usa `about: {@type: Dataset, @id: "...#dados"}`
+          // para apontar ao conjunto declarado na capa, e cobrar `description`
+          // dela reprovaria markup correto. Auditoria que grita lobo é
+          // auditoria ignorada, e ignorada é pior que nenhuma.
+          const chaves = Object.keys(n).filter((k) => k !== "@context");
+          const soReferencia = n["@id"] &&
+            chaves.every((k) => k === "@type" || k === "@id");
+          if (!soReferencia) {
+            const falta = ["name", "description"].filter((k) => !n[k]);
+            if (falta.length) achados.push(`${n.name ?? "(sem nome)"}: falta ${falta}`);
+          }
+        }
+        for (const v of Object.values(n)) visitar(v);
+      };
+      for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+        try { visitar(JSON.parse(s.textContent)); } catch { /* já sinalizado */ }
+      }
+      return achados;
+    })();
+
     return {
       duplicados: Object.entries(ids).filter(([, n]) => n > 1),
       aninhados: [...document.querySelectorAll("a a")].map((a) => a.textContent.trim().slice(0, 24)),
       descQuebrados: [...document.querySelectorAll("[aria-describedby]")]
         .map((e) => e.getAttribute("aria-describedby"))
         .filter((id) => !document.getElementById(id)),
-      saltos, pequenos, tipos, semContraste, buscaNaoAbriu,
+      saltos, pequenos, tipos, semContraste, buscaNaoAbriu, datasetsRuins,
       h1: document.querySelectorAll("h1").length,
       navSemRotulo: [...document.querySelectorAll("nav")]
         .filter((n) => !n.getAttribute("aria-label") && !n.getAttribute("aria-labelledby")).length,
@@ -298,6 +337,8 @@ for (const caminho of caminhos) {
   flag(tema !== "print" && r.buscaNaoAbriu,
     "a busca do cabeçalho não abriu: os critérios não a examinaram");
   flag(!r.tipos.length && !r.noindex, "sem JSON-LD");
+  flag(r.datasetsRuins.length,
+    `Dataset sem campo obrigatório: ${JSON.stringify(r.datasetsRuins)}`);
   flag(r.titulo > 60, `title com ${r.titulo}ch (o Google corta perto de 60)`);
   flag(r.descricao > 160, `description com ${r.descricao}ch (o Google corta perto de 160)`);
 

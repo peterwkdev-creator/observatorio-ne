@@ -92,3 +92,43 @@ export function palavrasChave(extra: string[] = []): string[] {
     ...extra,
   ];
 }
+
+/**
+ * As fontes de que este site deriva, para `isBasedOn`.
+ *
+ * ## Por que `CreativeWork` e não `Dataset`
+ *
+ * Achado em 04/09/2026, pela **inspeção do Search Console** — e não pelo meu
+ * validador, que só conferia presença de campo e dava tudo certo.
+ *
+ * Tipadas como `Dataset`, estas entradas viram **conjuntos de dados próprios
+ * na página**, e o Google as valida como tais: *"O campo `description` não foi
+ * encontrado — 1 erro crítico"*, uma vez por fonte. A página de Imperatriz
+ * declarava três datasets, dois deles stubs inválidos.
+ *
+ * `Dataset` é subtipo de `CreativeWork`. Citar a fonte como `CreativeWork` diz
+ * **"o dado veio daqui"** sem alegar que este site publica aquele conjunto —
+ * que é a verdade, e é o que tira os stubs da validação sem inventar
+ * `description` para um dataset de terceiro.
+ *
+ * **A lição:** meu validador afirmava o que eu tinha pensado em conferir. O
+ * Search Console afirma o que o Google de fato exige. Quando os dois discordam,
+ * quem manda é quem lê.
+ */
+export const FONTES = [
+  {
+    "@type": "CreativeWork",
+    name: "IBGE — Agregados",
+    url: "https://servicodados.ibge.gov.br",
+  },
+  {
+    "@type": "CreativeWork",
+    name: "SICONFI — Tesouro Nacional",
+    url: "https://apidatalake.tesouro.gov.br",
+  },
+  {
+    "@type": "CreativeWork",
+    name: "INEP — IDEB",
+    url: "https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/ideb",
+  },
+] as const;
