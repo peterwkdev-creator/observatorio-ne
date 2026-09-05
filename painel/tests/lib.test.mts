@@ -433,3 +433,24 @@ test("o substantivo é parametrizável e pluraliza junto", () => {
   assert.equal(fracaoDe(3, 27, "estado"), "3 dos 27 estados");
   assert.equal(fracaoDe(1, 1, "estado"), "o único estado");
 });
+
+// ------------------------------------------------------------- enxugar
+
+test("a regra do enxugar é lista do que SAI, nunca do que fica", () => {
+  // A primeira versão era "apagar todo .txt menos o robots.txt", e teria
+  // apagado a CHAVE DO INDEXNOW — um .txt na raiz cujo sumiço só apareceria
+  // semanas depois, como 403 no próximo envio. Lista de exclusão apodrece a
+  // cada arquivo novo em `public/`; lista de inclusão erra para o lado seguro.
+  const fonte = fs.readFileSync("scripts/enxugar.mjs", "utf-8");
+
+  // `ehPayload` decide o que sai. Ela tem de exigir uma marca do Next, nunca
+  // apenas a extensão.
+  assert.match(fonte, /__next\./,
+    "a regra não menciona o prefixo do Next — está apagando por extensão?");
+  assert.match(fonte, /index\.html/,
+    "`index.txt` só é payload ao lado de um index.html; a condição sumiu");
+
+  // E o script se recusa a terminar sem a chave preservada.
+  assert.match(fonte, /chave do IndexNow NÃO está entre os mantidos/,
+    "sumiu a verificação final que protege a chave");
+});
