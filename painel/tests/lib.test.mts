@@ -13,7 +13,10 @@ import { test } from "node:test";
 import fs from "node:fs";
 import { inflateRawSync } from "node:zlib";
 
-import { concorda, descricaoDe, fracaoDe } from "../lib/dados.ts";
+import {
+  concorda, descricaoDe, fracaoDe, INDICADORES_DA_CAPA, projetar,
+  type Snapshot,
+} from "../lib/dados.ts";
 import {
   funcoesDoPais, mediana, panoramaEstados, posicaoNaLista,
 } from "../lib/nacional.ts";
@@ -453,4 +456,63 @@ test("a regra do enxugar é lista do que SAI, nunca do que fica", () => {
   // E o script se recusa a terminar sem a chave preservada.
   assert.match(fonte, /chave do IndexNow NÃO está entre os mantidos/,
     "sumiu a verificação final que protege a chave");
+});
+
+// ----------------------------------------------------------------- projetar
+
+/** Um snapshot mínimo com quatro indicadores, na ordem das colunas. */
+function snapshotFalso(): Snapshot {
+  const ind = (codigo: string) => ({
+    codigo, nome: codigo, unidade: "Pessoas", agregado: 1, variavel: 1,
+    periodo: "2022", origem: null, coletadoEm: "2026-09-04T00:00:00+00:00",
+    totalRegiao: null,
+  });
+  return {
+    geradoEm: "2026-09-04T00:00:00+00:00", fonte: "teste",
+    colunas: ["codigo", "nome", "uf", "a", "b", "c", "d"],
+    indicadores: [ind("a"), ind("b"), ind("c"), ind("d")],
+    ufs: [],
+    municipios: [
+      [1, "Um", "AA", 10, 20, 30, 40],
+      [2, "Dois", "BB", 11, null, 33, 44],
+    ],
+  };
+}
+
+test("projetar recorta as colunas pedidas, na ordem pedida", () => {
+  const p = projetar(snapshotFalso(), ["c", "a"]);
+  assert.deepEqual(p.indicadores.map((i) => i.codigo), ["c", "a"]);
+  assert.deepEqual(p.linhas, [
+    [1, "Um", "AA", 30, 10],
+    [2, "Dois", "BB", 33, 11],
+  ]);
+});
+
+test("projetar preserva a ordem das LINHAS, que é contrato com faixasEmLinha", () => {
+  // Se a projeção reordenasse, cada município exibiria a situação fiscal do
+  // vizinho — e a página continuaria bem formada, que é o que torna esse
+  // defeito difícil de ver.
+  const s = snapshotFalso();
+  const p = projetar(s, ["a"]);
+  assert.deepEqual(p.linhas.map((l) => l[0]), s.municipios.map((l) => l[0]));
+});
+
+test("projetar preserva a AUSÊNCIA como null, nunca como zero", () => {
+  const p = projetar(snapshotFalso(), ["b"]);
+  assert.equal(p.linhas[1]![3], null);
+});
+
+test("projetar LEVANTA quando o indicador não existe", () => {
+  // Omitir em silêncio faria a capa renderizar uma coluna a menos sem dizer por
+  // quê: um indicador renomeado no motor Python sumiria da tela sem nada
+  // quebrar, que é a classe de defeito mais fácil de nunca descobrir.
+  assert.throws(() => projetar(snapshotFalso(), ["a", "inexistente"]),
+                /inexistente/);
+});
+
+test("os indicadores da capa continuam sendo três", () => {
+  // Sentinela: com os dez do Censo 2022 no snapshot, iterar tudo daria 13
+  // cartões e 13 colunas numéricas, e mandaria +149 KB comprimidos nas props
+  // de toda visita. Se esta lista crescer, que seja por decisão.
+  assert.equal(INDICADORES_DA_CAPA.length, 3);
 });

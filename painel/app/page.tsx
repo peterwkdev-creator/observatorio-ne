@@ -1,6 +1,8 @@
 import Link from "next/link";
 
-import { br, dataLegivel, expandir, valorDoIndicador } from "@/lib/dados";
+import {
+  br, dataLegivel, INDICADORES_DA_CAPA, projetar, valorDoIndicador,
+} from "@/lib/dados";
 import { slugUf } from "@/lib/estado";
 import { faixasEmLinha } from "@/lib/fiscal";
 import { funcoesDoPais, panoramaEstados } from "@/lib/nacional";
@@ -23,10 +25,18 @@ const REGIOES = ["Norte", "Nordeste", "Sudeste", "Sul", "Centro-Oeste"];
 
 export default async function Pagina() {
   const snapshot = await lerSnapshot();
-  const municipios = expandir(snapshot);
+  // A capa mostra os SEUS indicadores, não todos os do snapshot: com os dez do
+  // Censo 2022 no banco, iterar o snapshot inteiro daria 13 cartões e 13
+  // colunas numéricas, e mandaria +149 KB comprimidos nas props de toda visita.
+  // Ver `INDICADORES_DA_CAPA`.
+  const capa = projetar(snapshot, INDICADORES_DA_CAPA);
   const [fiscal, ideb] = await Promise.all([
     lerFiscal(), lerIdeb("anos_iniciais"),
   ]);
+  // Sobre TODOS os indicadores, e não sobre os da capa — de propósito. A frase
+  // diz quando o CONJUNTO foi coletado, e é ele que alimenta os downloads;
+  // datá-la pelos três cartões faria o site declarar dado mais velho do que
+  // tem. Trocar para `capa` parece uma correção e não é.
   const coletadoEm =
     snapshot.indicadores.map((i) => i.coletadoEm).filter(Boolean).sort().at(-1) ??
     snapshot.geradoEm;
@@ -77,7 +87,7 @@ export default async function Pagina() {
         name: "Dados abertos dos municípios brasileiros",
         description:
           `População, PIB, despesa com pessoal, despesa por função e IDEB dos ` +
-          `${municipios.length} municípios dos 27 estados do Brasil, a ` +
+          `${capa.linhas.length} municípios dos 27 estados do Brasil, a ` +
           `partir das APIs públicas do IBGE, do SICONFI/Tesouro Nacional e do ` +
           `INEP, com a fonte e a data de coleta ao lado de cada número.`,
         url: `${SITE}/`,
@@ -105,7 +115,7 @@ export default async function Pagina() {
             "@type": "DataDownload",
             encodingFormat: "text/csv",
             contentUrl: `${SITE}/dados/municipios.csv`,
-            name: `Base completa: ${municipios.length} municípios em CSV`,
+            name: `Base completa: ${capa.linhas.length} municípios em CSV`,
           },
         ],
         isBasedOn: FONTES,
@@ -124,7 +134,7 @@ export default async function Pagina() {
         <h1 className={s.titulo}>Números Públicos</h1>
         <p className={s.subtitulo}>
           População, PIB, gasto com pessoal, despesa por função e IDEB dos{" "}
-          <strong>{br(municipios.length)} municípios</strong> dos 27 estados
+          <strong>{br(capa.linhas.length)} municípios</strong> dos 27 estados
           do Brasil — com a fonte e a data de coleta ao lado de cada número.
         </p>
         <p className={s.coletadoEm}>
@@ -140,7 +150,7 @@ export default async function Pagina() {
       </p>
 
       <section className={s.cartoes} aria-label="Totais da região">
-        {snapshot.indicadores.map((ind) => (
+        {capa.indicadores.map((ind) => (
           <article key={ind.codigo} className={s.cartao}>
             <h2 className={s.cartaoRotulo}>
               {ind.nome} · {ind.periodo}
@@ -200,8 +210,8 @@ export default async function Pagina() {
           <p className={s.secaoNota}>
             <strong>Isto não é o gasto dos municípios brasileiros.</strong> É o
             dos <strong>{br(pais.municipios)}</strong> que publicaram o
-            relatório — {br((pais.municipios * 100) / municipios.length, 0)}% dos{" "}
-            {br(municipios.length)}. Os outros não aparecem aqui porque não há
+            relatório — {br((pais.municipios * 100) / capa.linhas.length, 0)}% dos{" "}
+            {br(capa.linhas.length)}. Os outros não aparecem aqui porque não há
             número deles, e somar zero por eles seria inventar um.
           </p>
         </section>
@@ -239,7 +249,7 @@ export default async function Pagina() {
                   Entregaram o relatório{" "}
                   <span className={s.ausente}>(%)</span>
                 </th>
-                {snapshot.indicadores.map((i) => (
+                {capa.indicadores.map((i) => (
 <th key={i.codigo} scope="col" className={s.numero}>
                     {i.nome}{" "}
                     <span className={s.ausente}>
@@ -262,7 +272,7 @@ export default async function Pagina() {
             {REGIOES.map((regiao) => (
               <tbody key={regiao}>
                 <tr>
-                  <th scope="colgroup" colSpan={3 + snapshot.indicadores.length}
+                  <th scope="colgroup" colSpan={3 + capa.indicadores.length}
                       className={s.grupo}>
                     {regiao}
                   </th>
@@ -299,7 +309,7 @@ export default async function Pagina() {
                       return `${br(e.taxa, 0)}%`;
                     })()}
                   </td>
-                  {snapshot.indicadores.map((i) => (
+                  {capa.indicadores.map((i) => (
                     <td
                       key={i.codigo}
                       className={`${s.numero} tabular ${
@@ -318,9 +328,9 @@ export default async function Pagina() {
       </section>
 
       <Municipios
-        linhas={snapshot.municipios}
-        indicadores={snapshot.indicadores}
-        faixas={faixasEmLinha(snapshot.municipios, fiscal)}
+        linhas={capa.linhas}
+        indicadores={capa.indicadores}
+        faixas={faixasEmLinha(capa.linhas, fiscal)}
       />
 
       <footer className={s.rodape}>

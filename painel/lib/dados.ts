@@ -90,6 +90,76 @@ export function expandirLinhas(
   }));
 }
 
+/**
+ * Os indicadores que a CAPA mostra — cartões e tabela.
+ *
+ * ## Por que a capa escolhe, em vez de mostrar o que houver
+ *
+ * A primeira versão iterava `snapshot.indicadores` inteiro nos dois lugares, e
+ * isso funcionou enquanto eram três. Em 04/09/2026 entraram dez indicadores do
+ * Censo 2022 e a conta virou outra:
+ *
+ * - **13 cartões** no topo da capa, onde cabiam três.
+ * - **13 colunas numéricas** na tabela, ilegíveis num telefone.
+ * - E o custo medido: as linhas vão nas **props** do componente de cliente,
+ *   serializadas no HTML da capa. Passar de 3 para 13 valores em 5.571 linhas
+ *   são **+149 KB comprimidos em toda visita** — na página que já foi otimizada
+ *   exatamente aí, quando passar objetos expandidos custava 269 KB.
+ *
+ * O arquivo `dados/snapshot.json` **não** é o problema: ele é lido do disco no
+ * build e nunca servido (não está em `public/`). Quem paga é a props.
+ *
+ * ## A ordem é a ordem das colunas
+ *
+ * E também decide a ordenação inicial da tabela, que usa o primeiro indicador.
+ * Mexer aqui muda o que o visitante vê primeiro.
+ */
+export const INDICADORES_DA_CAPA = [
+  "pib-municipal",
+  "populacao-censo-2022",
+  "populacao-estimada",
+] as const;
+
+/**
+ * Recorta o snapshot nos indicadores pedidos, preservando a ordem das linhas.
+ *
+ * **Levanta se um código não existir**, em vez de omitir a coluna. Omitir em
+ * silêncio faria a capa renderizar a menos sem dizer por quê — e um indicador
+ * renomeado no motor Python sumiria da tela sem nada quebrar, que é a classe de
+ * defeito mais fácil de não descobrir.
+ *
+ * A ordem das linhas é preservada porque ela é **contrato** com
+ * `faixasEmLinha`: casada errado, cada município exibiria a situação fiscal do
+ * vizinho e a página continuaria bem formada.
+ */
+export function projetar(
+  snapshot: Snapshot,
+  codigos: readonly string[],
+): { linhas: LinhaMunicipio[]; indicadores: Indicador[] } {
+  const indices: number[] = [];
+  const indicadores: Indicador[] = [];
+
+  for (const codigo of codigos) {
+    const i = snapshot.indicadores.findIndex((x) => x.codigo === codigo);
+    if (i < 0) {
+      throw new Error(
+        `indicador "${codigo}" não está no snapshot (tem: ` +
+        `${snapshot.indicadores.map((x) => x.codigo).join(", ")}). ` +
+        "Rodar `python -m observatorio exportar` depois de ingeri-lo.",
+      );
+    }
+    indices.push(i);
+    indicadores.push(snapshot.indicadores[i]!);
+  }
+
+  const linhas = snapshot.municipios.map(
+    ([codigo, nome, uf, ...valores]) =>
+      [codigo, nome, uf,
+       ...indices.map((i) => valores[i] ?? null)] as LinhaMunicipio,
+  );
+  return { linhas, indicadores };
+}
+
 /** Número no formato brasileiro. `null` vira travessão, nunca zero. */
 export function br(valor: number | null | undefined, casas = 0): string {
   if (valor === null || valor === undefined) return "—";
