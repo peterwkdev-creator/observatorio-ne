@@ -30,6 +30,74 @@ export function idCatalogo(site: string): string {
   return `${site}/#catalogo`;
 }
 
+/** O nome do catálogo e do site. Uma constante para não divergirem. */
+export const NOME_CATALOGO = "Números Públicos";
+
+/**
+ * Referência a um nó declarado em OUTRA página — com identidade própria.
+ *
+ * ## Por que `@id` sozinho não basta fora da capa
+ *
+ * O `@id` resolve **dentro do grafo onde o nó está declarado**. Na capa isso é
+ * verdade: `DataCatalog`, `WebSite` e `Dataset` moram no mesmo `@graph`. Nas
+ * 5.598 páginas de estado e de município, o `includedInDataCatalog` apontava
+ * para um nó que **não existe naquela página** — e o Google analisa cada página
+ * isoladamente, então via um nó sem `name` e sem `url`.
+ *
+ * Foi exatamente o que ele reportou em 05/09/2026, no e-mail do Search Console:
+ * *"É preciso especificar name ou url (em includedInDataCatalog)"*.
+ *
+ * ## O que custa e o que compra
+ *
+ * Repetir `name` e `url` custa ~90 bytes por página e mantém o `@id`, que é o
+ * que liga as pontas para quem resolve o grafo entre páginas. Não é duplicação
+ * de dado: é uma referência que se explica sozinha, que é o que qualquer
+ * consumidor de uma página só precisa.
+ *
+ * Vale para toda referência entre páginas, não só o catálogo — a página de
+ * ajuda tinha o mesmo padrão em `about` e `isPartOf`.
+ */
+export function referencia(
+  id: string, tipo: string, nome: string, url: string,
+): { "@id": string; "@type": string; name: string; url: string } {
+  return { "@id": id, "@type": tipo, name: nome, url };
+}
+
+/** O catálogo, referenciável de qualquer página. */
+export function catalogoDe(site: string) {
+  return referencia(idCatalogo(site), "DataCatalog", NOME_CATALOGO, `${site}/`);
+}
+
+/**
+ * O conjunto de dados do site inteiro, referenciável de qualquer página.
+ *
+ * **Leva `description`, e não por capricho.** Um nó `Dataset` com `name` e sem
+ * `description` é "erro crítico" para o Google — mais grave que a referência
+ * crua que ele substitui. A auditoria pegou isso no mesmo dia em que a correção
+ * foi escrita, reprovando a página de ajuda: dar identidade a uma referência
+ * de `Dataset` obriga a completá-la.
+ *
+ * A descrição é estática e **sem contagem**. A da capa embute "5.571
+ * municípios" porque é calculada ali; repeti-la aqui à mão seria o erro que
+ * esta base já pagou três vezes — número certo no dia em que foi digitado e
+ * falso na coleta seguinte, sem nada acusar.
+ */
+export function conjuntoDoSite(site: string) {
+  return {
+    ...referencia(`${site}/#dados`, "Dataset",
+                  "Dados abertos dos municípios brasileiros", `${site}/`),
+    description:
+      "População, PIB, despesa com pessoal, despesa liquidada por função " +
+      "orçamentária e IDEB dos municípios brasileiros, a partir das APIs " +
+      "públicas do IBGE, do SICONFI/Tesouro Nacional e do INEP.",
+  };
+}
+
+/** O site, referenciável de qualquer página. */
+export function siteDe(site: string) {
+  return referencia(`${site}/#site`, "WebSite", NOME_CATALOGO, `${site}/`);
+}
+
 /**
  * O intervalo coberto pelos dados, em ISO 8601 (`"2005/2024"`).
  *

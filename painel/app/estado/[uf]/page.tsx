@@ -13,7 +13,7 @@ import { ROTULO_FAIXA } from "../../../lib/fiscal";
 import { medianaUltimaEdicao } from "../../../lib/ideb";
 import { panoramaEstados, posicaoNaLista } from "../../../lib/nacional";
 import {
-  FONTES, VARIAVEIS, coberturaTemporal, idCatalogo, palavrasChave,
+  FONTES, VARIAVEIS, catalogoDe, coberturaTemporal, palavrasChave,
 } from "../../../lib/jsonld";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../../lib/servidor";
 import estilos from "./estado.module.css";
@@ -220,7 +220,7 @@ export default async function PaginaEstado(
     keywords: palavrasChave([r.uf.nome, r.uf.sigla, "IDEB", "IBGE", "SICONFI"]),
     temporalCoverage: coberturaTemporal(snapshot, fiscal, ideb),
     variableMeasured: VARIAVEIS,
-    includedInDataCatalog: { "@id": idCatalogo(SITE) },
+    includedInDataCatalog: catalogoDe(SITE),
     spatialCoverage: {
       "@type": "Place",
       name: `${r.uf.nome}, Brasil`,

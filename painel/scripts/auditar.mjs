@@ -270,7 +270,45 @@ for (const caminho of caminhos) {
       return achados;
     })();
 
+    /**
+     * Referência a um `@id` que NÃO está definido nesta página.
+     *
+     * Achada em 05/09/2026 por um e-mail do Search Console, e **não** por esta
+     * auditoria — que examinava só nós `@type: "Dataset"` e deixava passar o
+     * `includedInDataCatalog`, que é um `DataCatalog`. Estava em 5.598 páginas.
+     *
+     * O `@id` resolve **dentro do grafo onde o nó está declarado**. Na capa o
+     * `DataCatalog` mora no mesmo `@graph`; nas páginas de estado e de município
+     * a referência apontava para fora, e o Google — que lê cada página isolada —
+     * via um nó sem `name` e sem `url`.
+     *
+     * A regra que separa o certo do errado não é "tem `@id`?", e sim **"o nó
+     * está definido aqui?"**. Referência para nó da mesma página é markup
+     * correto e barato; referência para fora precisa se explicar sozinha.
+     */
+    const referenciasOrfas = (() => {
+      const definidos = new Set();
+      const refs = [];
+      const visitar = (n) => {
+        if (Array.isArray(n)) return n.forEach(visitar);
+        if (!n || typeof n !== "object") return;
+        const chaves = Object.keys(n).filter((k) => k !== "@context");
+        if (n["@id"]) {
+          const soRef = chaves.every((k) => k === "@type" || k === "@id");
+          if (soRef) refs.push(n);
+          else definidos.add(n["@id"]);
+        }
+        for (const v of Object.values(n)) visitar(v);
+      };
+      for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+        try { visitar(JSON.parse(s.textContent)); } catch { /* já sinalizado */ }
+      }
+      return refs.filter((r) => !definidos.has(r["@id"]))
+                 .map((r) => `${r["@type"] ?? "?"} ${r["@id"]}`);
+    })();
+
     return {
+      referenciasOrfas,
       duplicados: Object.entries(ids).filter(([, n]) => n > 1),
       aninhados: [...document.querySelectorAll("a a")].map((a) => a.textContent.trim().slice(0, 24)),
       descQuebrados: [...document.querySelectorAll("[aria-describedby]")]
@@ -339,6 +377,9 @@ for (const caminho of caminhos) {
   flag(!r.tipos.length && !r.noindex, "sem JSON-LD");
   flag(r.datasetsRuins.length,
     `Dataset sem campo obrigatório: ${JSON.stringify(r.datasetsRuins)}`);
+  flag(r.referenciasOrfas.length,
+    "referência JSON-LD a nó não declarado nesta página, sem name/url: "
+    + JSON.stringify(r.referenciasOrfas));
   flag(r.titulo > 60, `title com ${r.titulo}ch (o Google corta perto de 60)`);
   flag(r.descricao > 160, `description com ${r.descricao}ch (o Google corta perto de 160)`);
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { br, expandir } from "../../lib/dados";
 import { FUNCOES_DA_PORTARIA, LIMITE_PLAUSIVEL } from "../../lib/fiscal";
+import { conjuntoDoSite, siteDe } from "../../lib/jsonld";
 import { lerFiscal, lerIdeb, lerSnapshot, SITE } from "../../lib/servidor";
 import estilos from "./ajuda.module.css";
 
@@ -91,8 +92,10 @@ export default async function PaginaAjuda() {
     name: TITULO,
     url: `${SITE}/ajuda/`,
     inLanguage: "pt-BR",
-    isPartOf: { "@type": "WebSite", "@id": `${SITE}/#site` },
-    about: { "@type": "Dataset", "@id": `${SITE}/#dados` },
+    // Referências para nós declarados NA CAPA: levam `name` e `url` porque
+    // o Google lê cada página isolada e não resolve `@id` entre páginas.
+    isPartOf: siteDe(SITE),
+    about: conjuntoDoSite(SITE),
     description:
       "Glossário e perguntas frequentes sobre os números publicados: RCL " +
       "ajustada, limites da Lei de Responsabilidade Fiscal, despesa " +

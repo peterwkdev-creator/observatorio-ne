@@ -6,7 +6,7 @@ import { br, descricaoDe, escala, expandir, milReaisParaReais } from "../../../l
 import { slugUf, vizinhosDe } from "../../../lib/estado";
 import { posicaoEntre, posicaoNoEstado } from "../../../lib/posicao";
 import {
-  FONTES, VARIAVEIS, coberturaTemporal, idCatalogo, identificadorIbge, palavrasChave,
+  FONTES, VARIAVEIS, catalogoDe, coberturaTemporal, identificadorIbge, palavrasChave,
 } from "../../../lib/jsonld";
 import {
   compararFuncoes, DESLOCAMENTO_MINIMO, FUNCOES_DA_PORTARIA, funcoesDe,
@@ -263,7 +263,7 @@ export default async function PaginaMunicipio(
     keywords: palavrasChave([m.nome, uf?.nome ?? m.uf, "IDEB", "IBGE", "SICONFI"]),
     temporalCoverage: coberturaTemporal(snapshot, fiscal, ideb),
     variableMeasured: VARIAVEIS,
-    includedInDataCatalog: { "@id": idCatalogo(SITE) },
+    includedInDataCatalog: catalogoDe(SITE),
     spatialCoverage: {
       "@type": "Place",
       name: `${m.nome}, ${m.uf}, Brasil`,
