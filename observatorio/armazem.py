@@ -55,6 +55,31 @@ CREATE TABLE IF NOT EXISTS observacao (
 );
 CREATE INDEX IF NOT EXISTS idx_observacao_ind ON observacao (indicador, periodo);
 
+-- O buraco da idempotência, achado em 04/09/2026 coletando o Censo 2022.
+--
+-- `INSERT OR IGNORE` depende de colisão da chave primária, e a chave tem o
+-- `valor` dentro -- de propósito, para que um número revisado pelo IBGE entre
+-- ao lado do antigo. Mas no SQLite **NULL nunca colide com NULL**: toda
+-- reingestão de um valor AUSENTE criava mais uma linha, sem limite. E o
+-- defeito mora justamente nas linhas que dizem "não sabemos", que é a
+-- distinção que este projeto existe para manter.
+--
+-- O índice parcial resolve sem desfazer o desenho: **no máximo uma linha de
+-- ausência** por município/indicador/período, e quantas linhas de valor forem
+-- precisas para o histórico da fonte.
+--
+-- A limpeza vem ANTES do índice, e não é opcional: criar índice único sobre
+-- dado já duplicado falha, e quem já coletou tem as duplicatas no disco. Fica
+-- no esquema (que roda a cada abertura) em vez de num passo à parte, porque
+-- migração que depende de alguém lembrar é migração que um dia não acontece.
+-- Em banco limpo apaga zero linhas.
+DELETE FROM observacao WHERE valor IS NULL AND rowid NOT IN (
+    SELECT MIN(rowid) FROM observacao WHERE valor IS NULL
+     GROUP BY municipio, indicador, periodo
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_observacao_ausente
+    ON observacao (municipio, indicador, periodo) WHERE valor IS NULL;
+
 CREATE TABLE IF NOT EXISTS coleta (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     rodou_em    TEXT    NOT NULL,
@@ -170,6 +195,11 @@ class Armazem:
         A chave inclui o **valor**: um número revisado pelo IBGE entra ao lado do
         anterior, com `coletado_em` próprio, em vez de apagá-lo. Reingerir o
         mesmo valor não cria nada — é o que torna a operação idempotente.
+
+        **A ausência precisa de um índice à parte para isso valer.** `INSERT OR
+        IGNORE` depende de colisão de chave, e NULL não colide com NULL: sem o
+        `idx_observacao_ausente`, reingerir um valor ausente duplicava a linha
+        toda vez. Ver o comentário no `ESQUEMA`.
 
         Município desconhecido é **recusado**, não gravado: a chave estrangeira
         existe para que uma observação órfã não vire um número sem lugar no mapa.

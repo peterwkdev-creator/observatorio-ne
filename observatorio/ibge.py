@@ -26,7 +26,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Callable, Iterator
+from typing import Callable, Iterator, NamedTuple
 
 BASE = "https://servicodados.ibge.gov.br"
 
@@ -242,9 +242,44 @@ def _numero(bruto: str) -> float | None:
         return None
 
 
-def url_serie(agregado: int, periodo: str, variavel: int, uf: int | str) -> str:
+class Serie(NamedTuple):
+    """A coordenada completa de um indicador na API de agregados.
+
+    Era uma tupla de três, e o quarto campo entrou em 04/09/2026 para o Censo
+    2022. Continua indexável (`[1]` é o período), mas agora tem nome -- que é o
+    que impede o próximo campo de virar `[3]` num ponto e `[2]` em outro.
+    """
+
+    agregado: int
+    periodo: str
+    variavel: int
+    #: O recorte dentro do agregado, ou `None`. Ver `_sufixo_classificacao`.
+    classificacao: str | None = None
+
+
+def _sufixo_classificacao(classificacao: str | None) -> str:
+    """O recorte dentro do agregado, ou string vazia.
+
+    Boa parte dos agregados do Censo publica **várias categorias cruzadas na
+    mesma resposta**: em `10061`, "Superior completo" convive com "Total" e com
+    os outros três níveis de instrução. Sem dizer qual se quer, vêm todas -- e
+    somá-las daria a população contada quatro vezes, num número que parece
+    plausível e é falso.
+
+    Vai **cru**, sem percent-encoding. Medido em 04/09/2026: `[`, `]` e `|`
+    atravessam o `urllib` intactos e o IBGE responde exatamente o mesmo que para
+    a versão codificada (os mesmos 2.347 bytes). Cru mantém a URL legível no
+    campo `origem`, que é **publicado** -- e procedência que ninguém consegue
+    ler não é procedência.
+    """
+    return f"&classificacao={classificacao}" if classificacao else ""
+
+
+def url_serie(agregado: int, periodo: str, variavel: int, uf: int | str,
+              classificacao: str | None = None) -> str:
     return (f"{BASE}/api/v3/agregados/{agregado}/periodos/{periodo}"
-            f"/variaveis/{variavel}?localidades=N6[N3[{uf}]]")
+            f"/variaveis/{variavel}?localidades=N6[N3[{uf}]]"
+            f"{_sufixo_classificacao(classificacao)}")
 
 
 #: O nível do IBGE que representa o Brasil inteiro. N1 é o país, N2 a região,
@@ -253,7 +288,8 @@ NIVEL_BRASIL = "N1[all]"
 
 
 def url_serie_regiao(agregado: int, periodo: str, variavel: int,
-                     regiao: int | None = REGIAO_NORDESTE) -> str:
+                     regiao: int | None = REGIAO_NORDESTE,
+                     classificacao: str | None = None) -> str:
     """O mesmo indicador no nível da REGIÃO (N2) ou do BRASIL (N1).
 
     Existe para conferência: a soma dos municípios tem de bater com o total que
@@ -266,7 +302,8 @@ def url_serie_regiao(agregado: int, periodo: str, variavel: int,
     """
     nivel = NIVEL_BRASIL if regiao is None else f"N2[{regiao}]"
     return (f"{BASE}/api/v3/agregados/{agregado}/periodos/{periodo}"
-            f"/variaveis/{variavel}?localidades={nivel}")
+            f"/variaveis/{variavel}?localidades={nivel}"
+            f"{_sufixo_classificacao(classificacao)}")
 
 
 def total_da_regiao(dados: object) -> float | None:
@@ -286,6 +323,7 @@ def serie(
     ufs: list[int | str],
     pausa: float = PAUSA_PADRAO,
     dormir: Callable[[float], None] = time.sleep,
+    classificacao: str | None = None,
 ) -> Iterator[Observacao]:
     """As observações de um indicador, uma requisição por UF.
 
@@ -295,7 +333,7 @@ def serie(
     for i, uf in enumerate(ufs):
         if i:
             dormir(pausa)
-        url = url_serie(agregado, periodo, variavel, uf)
+        url = url_serie(agregado, periodo, variavel, uf, classificacao)
         dados = buscar_json(transporte, url, dormir)
         if not dados:
             continue

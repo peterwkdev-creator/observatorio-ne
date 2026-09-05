@@ -20,6 +20,7 @@ from .ibge import (
     url_serie_regiao,
     REGIAO_NORDESTE,
     municipios as buscar_municipios,
+    Serie,
     serie as buscar_serie,
     transporte_http,
     url_serie,
@@ -81,7 +82,7 @@ def br(valor: float | None, casas: int = 0) -> str:
 TOLERANCIA_RELATIVA = 1e-6
 
 
-def conferir(args) -> int:
+def conferir(args, transporte=None) -> int:
     """Soma dos municípios × total regional publicado pelo IBGE.
 
     É a prova de integridade da ingestão: pega município faltando, duplicado ou
@@ -95,7 +96,7 @@ def conferir(args) -> int:
     arredondamento é uma coisa, município faltando é outra, e a diferença
     relativa separa as duas com folga de várias ordens de grandeza.
     """
-    transporte = transporte_http()
+    transporte = transporte or transporte_http()
     with Armazem(args.banco) as db:
         indicadores = db.indicadores()
         if not indicadores:
@@ -103,9 +104,16 @@ def conferir(args) -> int:
             return 0
         divergiu = False
         for ind in indicadores:
-            periodo = INDICADORES[ind["codigo"]][1]
+            s = INDICADORES[ind["codigo"]]
+            periodo = s.periodo
             _, nivel = recorte_de(args)
-            url = url_serie_regiao(ind["agregado"], periodo, ind["variavel"], nivel)
+            # A classificação vai junto, e não é detalhe: sem ela a soma dos
+            # municípios (só "Superior completo") seria comparada com o total
+            # regional de TODOS os níveis de instrução, e o indicador nasceria
+            # divergindo em centenas de por cento -- um alarme falso que ensina
+            # a ignorar o único verificador de completude que o sistema tem.
+            url = url_serie_regiao(ind["agregado"], periodo, ind["variavel"],
+                                   nivel, s.classificacao)
             oficial = total_da_regiao(buscar_json(transporte, url))
             nossa = db.con.execute(
                 "SELECT SUM(valor) FROM observacao WHERE indicador = ?"
@@ -167,16 +175,56 @@ def ingerir_municipios(args, transporte=None, dormir=None) -> int:
 #: Só entra aqui combinação de agregado/variável/período **verificada contra a
 #: API**. Duas outras (densidade demográfica e o agregado 4709) devolveram
 #: HTTP 500 e ficaram de fora — escrevê-las pelo catálogo seria promessa falsa.
-INDICADORES = {
-    "populacao-censo-2022": (4714, "2022", 93),
-    "populacao-estimada":   (6579, "2024", 9324),
-    "pib-municipal":        (5938, "2021", 37),
+INDICADORES: dict[str, Serie] = {
+    "populacao-censo-2022": Serie(4714, "2022", 93),
+    "populacao-estimada":   Serie(6579, "2024", 9324),
+    "pib-municipal":        Serie(5938, "2021", 37),
+
+    # --- Censo 2022: pares numerador/denominador ---------------------------
+    #
+    # **Sempre o ABSOLUTO, nunca a variável de percentual do IBGE**, e não é
+    # preferência: `conferir` soma os municípios e compara com o total que a
+    # fonte publica. Somar 5.570 percentuais dá ~504.000 contra um N1 de 93 --
+    # reprovaria sempre, e a "correção" tentadora seria afrouxar a tolerância,
+    # o que desligaria a verificação para o PIB e a população junto.
+    #
+    # O percentual é derivado do par, e a derivação foi conferida contra a
+    # própria fonte: dá 93,0% de alfabetização e 89,2% de internet, batendo
+    # com as variáveis de taxa que o IBGE publica (93,00 e 89,16).
+    #
+    # Os três indicadores de saneamento dividem UM denominador: os "Total" dos
+    # agregados 6803, 6805 e 6892 são o mesmo número (72.456.368), conferido.
+
+    "domicilios-total":       Serie(6803,  "2022",   381, "1821[72129]"),
+    "agua-rede-geral":        Serie(6803,  "2022",   381, "1821[72144]"),
+    # 46290 é o composto (rede geral + pluvial + fossa ligada à rede), e não o
+    # 72110, que conta só "rede geral ou pluvial". O composto é o agrupamento
+    # que o próprio IBGE publica acima dos seus componentes.
+    "esgoto-rede":            Serie(6805,  "2022",   381, "11558[46290]"),
+    "lixo-coletado":          Serie(6892,  "2022",   381, "67[2520]"),
+
+    "moradores-10-mais":      Serie(10201, "2022", 13436, "2072[77584]|133[95278]"),
+    "internet-domicilio":     Serie(10201, "2022", 13436, "2072[77585]|133[95278]"),
+
+    "pessoas-18-mais":        Serie(10061, "2022",  2667,
+                                    "1568[120704]|58[95253]|2[6794]|86[95251]"),
+    "superior-completo":      Serie(10061, "2022",  2667,
+                                    "1568[99713]|58[95253]|2[6794]|86[95251]"),
+
+    # Alfabetização entra pelo 9542 e NÃO pelo 9543: o 9543 publica só a taxa,
+    # sem absoluto, e seria o único indicador do site fora do alcance do
+    # `conferir`.
+    "pessoas-15-mais":        Serie(9542,  "2022",   950,
+                                    "59[93024]|2[6794]|86[95251]|287[100362]"),
+    "alfabetizados-15-mais":  Serie(9542,  "2022",   950,
+                                    "59[1023]|2[6794]|86[95251]|287[100362]"),
 }
 
 
 def ingerir_indicador(args, transporte=None, dormir=None) -> int:
     extra = {} if dormir is None else {"dormir": dormir}
-    agregado, periodo, variavel = INDICADORES[args.indicador]
+    s = INDICADORES[args.indicador]
+    agregado, periodo, variavel = s.agregado, s.periodo, s.variavel
     todas, _ = recorte_de(args)
     ufs = [args.uf] if args.uf else list(todas)
     transporte = transporte or transporte_http()
@@ -190,7 +238,8 @@ def ingerir_indicador(args, transporte=None, dormir=None) -> int:
             # O rótulo e a unidade vêm da própria resposta: assim não divergem
             # da fonte nem dependem de alguém digitar certo.
             amostra = buscar_json(transporte, url_serie(agregado, periodo,
-                                                        variavel, ufs[0]),
+                                                        variavel, ufs[0],
+                                                        s.classificacao),
                                   **({} if dormir is None else {"dormir": dormir}))
             nome, unidade = metadados_da_serie(amostra)
             db.registrar_indicador(args.indicador, nome, unidade, agregado,
@@ -198,6 +247,7 @@ def ingerir_indicador(args, transporte=None, dormir=None) -> int:
 
             observacoes = list(buscar_serie(transporte, agregado, periodo,
                                             variavel, ufs, pausa=args.pausa,
+                                            classificacao=s.classificacao,
                                             **extra))
             lidas = len(observacoes)
             novas, inalteradas = db.gravar_observacoes(args.indicador,

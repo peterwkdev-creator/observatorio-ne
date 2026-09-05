@@ -14,10 +14,20 @@ import unittest
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 
+from unittest.mock import patch
+
 from observatorio.armazem import Armazem
-from observatorio.cli import construir_parser, ingerir_indicador
+from observatorio.cli import (
+    INDICADORES,
+    conferir,
+    construir_parser,
+    ingerir_indicador,
+)
 from observatorio.ibge import (
     ErroIBGE,
+    Serie,
+    url_serie,
+    url_serie_regiao,
     Municipio,
     Observacao,
     Resposta,
@@ -126,6 +136,32 @@ class TestArmazemObservacoes(unittest.TestCase):
         self.db.gravar_observacoes("pib-municipal", self.obs)
         self.assertEqual(self.db.gravar_observacoes("pib-municipal", self.obs),
                          (0, 75))
+
+    def test_regravar_um_valor_AUSENTE_tambem_nao_cria_nada(self):
+        """O buraco da idempotência, achado em 04/09/2026 na coleta do Censo.
+
+        `INSERT OR IGNORE` depende de colisão de chave primária, e a chave tem
+        o **valor** dentro (de propósito: valor revisado entra ao lado do
+        antigo). Mas no SQLite **NULL nunca colide com NULL** — então toda
+        reingestão de um valor AUSENTE criava mais uma linha, sem limite.
+
+        O teste irmão acima afirmava idempotência e passava há semanas: o
+        fixture de PIB não tem uma única ausência. **Teste que só exercita o
+        caso que funciona não é cobertura, é conforto.**
+
+        Custou 8 linhas duplicadas em `agua-rede-geral` — e são exatamente os 8
+        municípios sem dado, ou seja, o defeito mora nas linhas que dizem "não
+        sabemos", que é a distinção que este projeto existe para manter.
+        """
+        ausentes = [Observacao(o.municipio, o.periodo, None, o.origem)
+                    for o in self.obs]
+        self.assertEqual(self.db.gravar_observacoes("pib-municipal", ausentes),
+                         (75, 0))
+        self.assertEqual(self.db.gravar_observacoes("pib-municipal", ausentes),
+                         (0, 75))
+        linhas = self.db.con.execute(
+            "SELECT COUNT(*) FROM observacao WHERE valor IS NULL").fetchone()[0]
+        self.assertEqual(linhas, 75, "ausência duplicou ao ser reingerida")
 
     def test_revisao_do_ibge_entra_ao_lado_e_nao_apaga(self):
         # O IBGE revisa PIB retroativamente. O valor anterior é história, não
@@ -295,3 +331,65 @@ class TestToleranciaDaConferencia(unittest.TestCase):
         arredondamento = 5 / 1_243_103_280
         municipio_pequeno = 2_000 / 1_243_103_280
         self.assertGreater(municipio_pequeno / arredondamento, 100)
+
+
+class TestClassificacao(unittest.TestCase):
+    """O quarto campo da `Serie` — o recorte dentro do agregado.
+
+    Entrou em 04/09/2026, para o Censo 2022. Boa parte daqueles agregados
+    publica **várias categorias cruzadas na mesma resposta**: em `10061`,
+    "Superior completo" convive com "Total" e com os outros três níveis de
+    instrução. Sem dizer qual se quer, vêm todas — e somá-las conta a mesma
+    população quatro vezes, num número que parece plausível e é falso.
+    """
+
+    def test_indicador_sem_classificacao_gera_a_url_de_sempre(self):
+        # O campo é opcional, e os três indicadores antigos não podem ganhar
+        # parâmetro nenhum por causa dele: a URL vai gravada em `origem`, e
+        # mudá-la reescreveria a procedência já publicada de 5.570 municípios.
+        self.assertNotIn("classificacao", url_serie(4714, "2022", 93, 16))
+        self.assertNotIn("classificacao", url_serie_regiao(4714, "2022", 93))
+
+    def test_a_classificacao_entra_crua_na_url(self):
+        u = url_serie(10061, "2022", 2667, 16, "1568[99713]|58[95253]")
+        self.assertIn("&classificacao=1568[99713]|58[95253]", u)
+        # Crua, não percent-encoded: medido que o IBGE responde igual às duas
+        # formas, e `%5B%7C%5D` no campo `origem` não é procedência que alguém
+        # consiga conferir abrindo no navegador.
+        self.assertNotIn("%5B", u)
+
+    def test_conferir_pede_o_total_regional_COM_o_mesmo_recorte(self):
+        """O canário desta frente — e reprova no código anterior.
+
+        `conferir` é a única verificação de completude que o sistema tem: soma
+        os municípios e compara com o total que o IBGE publica. Se a soma vier
+        de "Superior completo" e o total regional vier de **todos** os níveis
+        juntos, o indicador nasce divergindo em centenas de por cento.
+
+        O estrago não é o alarme falso: é o alarme falso **ensinar a ignorar o
+        verificador**, e aí ele para de proteger o PIB e a população também.
+        """
+        vistas = []
+
+        def espiao(url):
+            vistas.append(url)
+            return Resposta(200, json.dumps([{
+                "id": "2667", "variavel": "Pessoas", "unidade": "Pessoas",
+                "resultados": [{"series": [{
+                    "localidade": {"id": "1", "nome": "Brasil"},
+                    "serie": {"2022": "1000"}}]}]}]))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            banco = str(Path(tmp) / "conferir.db")
+            with Armazem(banco) as db:
+                db.registrar_indicador("recorte-de-teste", "Pessoas",
+                                       "Pessoas", 10061, 2667)
+            args = construir_parser().parse_args(["--banco", banco, "conferir"])
+            with patch.dict(INDICADORES,
+                            {"recorte-de-teste": Serie(10061, "2022", 2667,
+                                                       "1568[99713]")}):
+                with redirect_stdout(io.StringIO()):
+                    conferir(args, transporte=espiao)
+
+        self.assertEqual(len(vistas), 1, "conferir devia consultar uma vez")
+        self.assertIn("classificacao=1568[99713]", vistas[0])
